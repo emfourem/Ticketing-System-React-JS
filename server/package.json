@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "dayjs": "^1.11.11",
+    "express": "^4.19.2",
+    "express-validator": "^7.1.0",
+    "morgan": "^1.10.0",
+    "node": "^22.3.0",
+    "nodemon": "^3.1.3"
+  }
+}
