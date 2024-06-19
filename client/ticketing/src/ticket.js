@@ -1,5 +1,6 @@
 'use strict';
-const dayjs = require('dayjs');
+import dayjs from 'dayjs';
+//const dayjs = require('dayjs');
 
 const State = {
     open: 'open',
@@ -19,7 +20,7 @@ const Category = {
 function Ticket(id, state, category, title, text, date, ownerId) {
   this.id = id;
   this.state = Object.values(State).includes(state)? state:State.open;
-  this.category = Object.values(Category).includes(state)? category : null;
+  this.category = Object.values(Category).includes(category)? category : null;
   this.title = title;
   this.text = text;
   this.date = date && dayjs(date);
@@ -35,11 +36,13 @@ function Ticket(id, state, category, title, text, date, ownerId) {
   }
 }
 
-
+/*
 function main() {
-    const t1=new Ticket( 1,"ciao", "pa", "Payment required","Where are my money?","2024-06-19 21:00",1);
+    const t1=new Ticket( 1,"ciao", "new feature", "Payment required","Where are my money?","2024-06-19 21:00",1);
     console.log(t1.toString());
   // Additional instruction to enable debug 
   debugger;
 }
 main();
+*/
+export {Ticket};
