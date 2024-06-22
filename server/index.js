@@ -1,15 +1,165 @@
-/*** Importing modules ***/
-import express, { json } from 'express';
-import morgan from 'morgan';                                  // logging middleware
-import { check, validationResult } from 'express-validator'; // validation middleware
+'use strict';
 
-//import { listFilms, searchFilms, getFilm, createFilm, updateFilm, updateFilmRating, deleteFilm } from './dao-films'; // module for accessing the films table in the DB
+const express = require('express');
+const morgan = require('morgan'); // logging middleware
+const {check, validationResult} = require('express-validator'); // validation middleware
+const dao = require('./dao'); // module for accessing the DB.  NB: use ./ syntax for files in the same dir
+const cors = require('cors');
+const moment = require('moment');
 
-/*** init express and set-up the middlewares ***/
+/*const corsOptions = {
+  origin: 'http://localhost:5173',
+  credentials: true,
+};*/
+
+// init express
 const app = express();
-app.use(morgan('dev'));
-app.use(json());
 
+// set-up the middlewares
+app.use(morgan('dev'));
+app.use(express.json()); // To automatically decode incoming json
+app.use(cors(/* corsOptions */));
+
+/*** APIs ***/
+
+// GET /api/questions
+app.get('/api/tickets', (req, res) => {
+  dao.listTickets()
+    .then(tickets => res.json(tickets))
+    .catch(() => res.status(500).end());
+});
+
+app.get('/api/ticket/:id',[
+  check("id").isInt()
+], (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({errors: errors.array()});
+  }
+  dao.retrieveTicket(req.params.id)
+    .then(state => {
+      if (state !== null) {
+        res.json({ state }); // Send back only the state
+      } else {
+        res.status(404).json({ error: 'Ticket not found' });
+      }
+    })
+    .catch(() => res.status(500).end());
+});
+
+app.get('/api/blocks/:id' ,[
+  check("id").isInt()
+], (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({errors: errors.array()});
+  }
+  dao.listBlocks(req.params.id)
+    .then(blocks => res.json(blocks))
+    .catch(() => res.status(500).end());
+});
+
+app.post('/api/tickets', [
+  check('ownerId').isInt(),
+  check('title').isLength({min: 1 , max:100}),
+  check('text').isLength({min: 1}),
+  check('state').isIn(['open','close']),
+  check('category').isIn(['payment', 'maintenance', 'inquiry', 'new feature', 'administrative']),
+  check('date').custom((value) => {
+    if (!moment(value, 'YYYY-MM-DD HH:mm', true).isValid()) {
+        throw new Error('Invalid date format, should be YYYY-MM-DD HH:mm');
+    }
+    return true;
+})
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({errors: errors.array()});
+  }
+
+  const resultUser = await dao.getUser(req.body.ownerId);  // db consistency: make sure user already exists
+  if (resultUser.error)
+    res.status(404).json(resultUser);   // questionId does not exist, please insert the question before the answer
+  else {
+    const ticket = {
+      title: req.body.title,
+      text: req.body.text,
+      state: req.body.state,
+      category: req.body.category,
+      date: req.body.date,
+      ownerId: req.body.ownerId
+    };
+
+    try {
+      const newTicket = await dao.createTicket(ticket);
+      res.status(201).json(Object.assign({}, newTicket, { username: resultUser.username }));
+    } catch (err) {
+      res.status(503).json({ error: `Database error during the creation of answer ${ticket.text} by ${resultUser.username}.` });
+    }
+  }
+});
+
+
+//sanitize the text to be formatted also after the storing
+
+app.post('/api/ticket/:id/addBlock', [
+  check('text').isLength({min: 1}),
+  check('author').isLength({min: 1, max:20}),
+  check('date').custom((value) => {
+    if (!moment(value, 'YYYY-MM-DD HH:mm', true).isValid()) {
+        throw new Error('Invalid date format, should be YYYY-MM-DD HH:mm');
+    }
+    return true;
+})
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({errors: errors.array()});
+  }
+
+  const resultUser = await dao.getUsername(req.body.author);  // db consistency: make sure user already exists
+  const resultTicket = await dao.getTicket(parseInt(req.params.id));
+  //from getTicket you can retrieve the date of the ticket and accept the block only if the date is after the creation time
+  if (resultUser.error && resultTicket.error )
+    res.status(404).json(resultUser);   // questionId does not exist, please insert the question before the answer
+  else {
+    const block = {
+      text: req.body.text,
+      date: req.body.date,
+      author: req.body.author,
+      ticketId: req.params.id
+    };
+
+    try {
+      const newBlock = await dao.createBlock(block);
+      res.status(201).json(newBlock);
+    } catch (err) {
+      res.status(503).json({ error: `Database error during the creation of answer ${ticket.text} by ${resultUser.username}.` });
+    }
+  }
+});
+
+app.put('/api/ticket/:id', [
+  check('id').isInt()
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({errors: errors.array()});
+  }
+
+  const ticket = req.body;
+  if(ticket.id !== req.params.id && ticket.state !== "open" && ticket.state !== "close"){
+    return res.status(422).json({error: `Database error; id ${req.params.id}, tID ${req.body.id}, state ${req.body.state} .`});
+  }
+
+  try {
+    await dao.updateTicket(ticket);
+    res.status(200).end();
+  } catch(err) {
+    res.status(503).json({error: `Database error during the update of ticket ${req.params.id}.`});
+  }
+
+});
 
 /*** Utility Functions ***/
 

@@ -45,4 +45,4 @@ function main() {
 }
 main();
 */
-export {Ticket};
+export {Ticket, Category};

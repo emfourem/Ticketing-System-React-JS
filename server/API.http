@@ -1,0 +1,26 @@
+GET http://localhost:3001/api/tickets HTTP/1.1
+##########
+GET http://localhost:3001/api/blocks/2 HTTP/1.1
+##########
+POST http://localhost:3001/api/tickets HTTP/1.1
+Content-Type: application/json
+
+{
+    "title": "Title",
+    "text": "Text",
+    "state": "open",
+    "category": "inquiry",
+    "date": "2024-05-06 21:23",
+    "ownerId":1
+}
+
+
+##########
+POST http://localhost:3001/api/ticket/3/addBlock HTTP/1.1
+Content-Type: application/json
+
+{
+    "date": "2021-09-25 16:48",
+    "author": "Bob",
+    "text": "New Block"
+}

@@ -1,85 +1,81 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Col, Container, Row, Navbar, Button, Nav } from 'react-bootstrap';
 import { BrowserRouter, Routes, Route, Outlet, Link } from 'react-router-dom'; 
 import './App.css';
 
-import { Ticket } from './ticket';
 import { TicketsTable } from './components/TableComponents';
+import { CreateRoute } from './components/CreateRoute';
+import { BlocksRoute } from './components/BlocksRoute';
+import { CreateBlockRoute } from './components/CreateBlockRoute';
+import API from './API';
 
-const ticket = new Ticket( 1,"open", "new feature", "Simple Request","Where are the office?","2024-06-18 15:36",2);
-const ticket2 = new Ticket( 2,"open", "administrative", "Payment required","Where are my money?","2024-06-19 21:00",1);
-const ticket3 = new Ticket( 3,"open", "maintenance", "Account closed","Where are you?","2023-06-19 20:00",2);
-const initialTickets = [];
-initialTickets.push(ticket,ticket2,ticket3);
 
 
 function MyHeader(props) {
-
-	return (
-		<Navbar bg="primary" variant="dark">
-      <Navbar.Brand className="mx-2">
-        <i className="bi bi-ticket" />
-        {" Ticketing System"}
-      </Navbar.Brand>
-      <Navbar.Collapse className="justify-content-end mx-2">
-        <Nav>
-          {/*<Nav.Link href="#">*/}
-            <i className="bi bi-person-circle" style={{ fontSize: '1.5rem' }} />
-          {/*</Nav.Link>*/}
-        </Nav>
-      </Navbar.Collapse>
-    </Navbar>
-	);
+  return (
+      <Navbar bg="primary" variant="dark" expand="lg" className="py-3">
+          <Navbar.Brand className="mx-2 d-flex align-items-center">
+              <i className="bi bi-ticket" style={{ fontSize: '1.8rem' }} />
+              <span className="ms-2">Ticketing System</span>
+          </Navbar.Brand>
+          <Navbar.Toggle aria-controls="basic-navbar-nav" />
+          <Navbar.Collapse className="justify-content-end mx-2">
+              <Nav>
+                  <Nav.Link href="#" className="d-flex align-items-center">
+                      <i className="bi bi-person-circle" style={{ fontSize: '1.8rem' }} />
+                  </Nav.Link>
+              </Nav>
+          </Navbar.Collapse>
+      </Navbar>
+  );
 }
 
 
 function MyFooter(props) {
-  return (<footer>
-    <p>&copy; Ticketing System</p>
-  </footer>);
-}
-
-
-function TicketsRoute(props) {   // former Main component
-
-
-  // ROUTES
-
-  //  /  =  initial page  (list of tickets)
-  //  /add  =  show the form needed to add 
-  //  /edit/:id  =  show the form to edit the answer identified by :id
-
-  //const [ showForm, setShowForm ] = useState(false);
-
-  //const [ editObj, setEditObj ] = useState(undefined);
-  
-
-  return (<>
-    <Row>
-      {/*<QuestionDescription question={question} />*/}
-    </Row>
-    <Row>
-      <Col>
-        <h2>List of Tickets</h2>
-      </Col>
-    </Row>
-    <Row>
-      <Col>
-        <TicketsTable listOfTickets={props.ticketsList} markAsClose={props.markAsClose}/>
-      </Col>
-    </Row>
-    <Row>
-      <Col>
-        <Link to='/create'> 
-          <Button>New Ticket</Button> 
-        </Link>
-      </Col>
-    </Row>
-  </>
+  return (
+      <footer className="bg-primary text-white py-3 mt-auto">
+          <Container>
+              <Row>
+                  <Col className="text-center">
+                      <p className="mb-0">&copy; {new Date().getFullYear()} Ticketing System</p>
+                  </Col>
+              </Row>
+          </Container>
+      </footer>
   );
 }
+
+
+function TicketsRoute(props) { 
+  return (
+    <div className="p-4"> {/* Adding padding around the entire component */}
+      <Row>
+        {/*<QuestionDescription question={question} />*/}
+      </Row>
+      <Row className="mb-4">
+        <Col>
+          <h2 className="text-center text-primary border-bottom pb-2">List of Tickets</h2>
+        </Col>
+      </Row>
+      <Row>
+        <Col>
+          <TicketsTable listOfTickets={props.ticketsList} markAsClose={props.markAsClose}/>
+        </Col>
+      </Row>
+      <Row>
+        <Col className="d-flex justify-content-center">
+          <Link to='/create'> 
+            <Button className="p-3">New Ticket</Button> 
+          </Link>
+        </Col>
+      </Row>
+    </div>
+  );
+}
+
+
 
 function DefaultRoute(props) {
   return (
@@ -95,66 +91,69 @@ function App() {
     // state moved up into App
     
 
-    const [ tickets, setTickets ] = useState(initialTickets.sort((a, b) => (a.date).isAfter(b.date) ? -1 : 1));
-
+    //const [ tickets, setTickets ] = useState(initialTickets.sort((a, b) => (a.date).isAfter(b.date) ? -1 : 1));
+    const [ tickets, setTickets ] = useState([]);
+    const [ refresh, setRefresh ] = useState(true);
     // Not needed anymore, the info about the object are retrieved by using the id in the URL
     //const [ editObj, setEditObj ] = useState(undefined);
   
     // Not needed anymore, this state is "sort of" substituted by the /add URL
     //const [ showForm, setShowForm ] = useState(false);
 
-    function markAsClose(id) {
-      setTickets( ticketsList => 
-        ticketsList.map(t => t.id === id ? Object.assign({}, t, {state: "close"}) : t)
-      );
+    function handleError(err) {
+      console.log(err);
+      let errMsg = 'Unkwnown error';
+      if (err.errors)
+        if (err.errors[0].msg)
+          errMsg = err.errors[0].msg;
+      else if (err.error)
+        errMsg = err.error;
+          
+      //setErrorMsg(errMsg); for showing error to client
+  
     }
-  /*
-  function voteAnswer(id, delta) {
-    setAnswers( answerList => 
-      answerList.map(e => e.id === id ? Object.assign({}, e, {score: e.score+delta}) : e)
-    );
-  }
 
-  function deleteAnswer(id) {
-    setAnswers( answerList =>
-      answerList.filter(e => e.id !== id)
-    );
-  }
-
-  function addAnswer(answer) {
-    setAnswers( answerList => {
-      // NB: max does not take an array but a set of parameters
-      const newId = Math.max(...answerList.map(e => e.id))+1;
-      answer.id = newId;
-      return [...answerList, answer];
+    function markAsClose(ticket) {
+      //update function to db
+      //no blocks can be added->props on a button which abilitate or deabilitate the button add then in the BlocksRoute
+      API.updateState(ticket.id, ticket.state==="open"?"close":"open")
+      .then(() => 
+        setTickets( ticketsList => 
+          ticketsList.map(t => t.id === ticket.id ? Object.assign({}, t, {state: "close"}) : t)))
+      .catch((err) => handleError(err))
     }
-    );
-  //setShowForm(false);
-  }
 
-  function saveExistingAnswer(answer) {
-    setAnswers( answerList => 
-      answerList.map( e => e.id === answer.id ? answer : e)
-    );
-    //setShowForm(false);
-    //setEditObj(undefined);
-  }
+    function createTicket(ticket) {
+      API.createTicket(ticket)
+      .then( () => setRefresh(true) )
+      .catch( (err) => handleError(err));
+    }
 
-/*
-  function setEditAnswer(id) {
-    setEditObj( answers.find( e => e.id === id) );
-    setShowForm(true);
-  }
-*/
+    function createBlock(block, ticketId) {
+      API.createBlock(block, ticketId)
+      .then()
+      .catch( (err) => handleError(err));
+    }
+
+    useEffect( () => {
+      API.getAllTickets()
+        .then((list) => {
+          setTickets(list.sort((a, b) => (a.date).isAfter(b.date) ? -1 : 1));
+          setRefresh(false);
+        }
+        )
+        .catch((err) => console.log(err));
+    }, [refresh]); //only at mount time and when refresh is needed
+
 
   return (
     <BrowserRouter>
     <Routes>
       <Route path='/' element={<Layout />}>
           <Route index element={ <TicketsRoute ticketsList={tickets} markAsClose={markAsClose}/> } />
-          {/*<Route path='/add' element={ <FormRoute addAnswer={addAnswer} /> } />
-          <Route path='/edit/:answerId' element={<FormRoute answerList={answers}
-  addAnswer={addAnswer} editAnswer={saveExistingAnswer} />} />*/}
+          <Route path='/create' element={ <CreateRoute createTicket={createTicket} />} />
+          <Route path='/ticket/:ticketId' element={<BlocksRoute /> } />
+          <Route path='/ticket/:ticketId/addBlock' element={<CreateBlockRoute createBlock={createBlock} />} />
       </Route>
       <Route path='/*' element={<DefaultRoute />} />
     </Routes>
@@ -163,37 +162,27 @@ function App() {
 }
 
 function Layout(props) {
-return (
-<Container fluid>
+  return (
+    <Container fluid className="d-flex flex-column min-vh-100">
       <Row>
         <Col>
           <MyHeader />
         </Col>
       </Row>
-      <Outlet />
+      <Row className="flex-grow-1">
+        <Col>
+          <Outlet />
+        </Col>
+      </Row>
       <Row>
         <Col>
           <MyFooter />
         </Col>
       </Row>
     </Container>
-  )
-}
-
-
-
-
-
-
-
-/*
-function App() {
-  const [count, setCount] = useState(0)
-
-  return (
-    <>
-    </>
   );
 }
-*/
+
+
+
 export default App
