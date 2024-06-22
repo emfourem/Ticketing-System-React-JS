@@ -3,14 +3,18 @@
 const express = require('express');
 const morgan = require('morgan'); // logging middleware
 const {check, validationResult} = require('express-validator'); // validation middleware
-const dao = require('./dao'); // module for accessing the DB.  NB: use ./ syntax for files in the same dir
+const passport = require('passport'); // auth middleware
+const LocalStrategy = require('passport-local'); // username and password for login
+const session = require('express-session'); // enable sessions
+const dao = require('./dao');
+const userDao = require('./userDao')
 const cors = require('cors');
 const moment = require('moment');
 
-/*const corsOptions = {
+const corsOptions = {
   origin: 'http://localhost:5173',
   credentials: true,
-};*/
+};
 
 // init express
 const app = express();
@@ -18,7 +22,61 @@ const app = express();
 // set-up the middlewares
 app.use(morgan('dev'));
 app.use(express.json()); // To automatically decode incoming json
-app.use(cors(/* corsOptions */));
+app.use(cors( corsOptions ));
+
+
+/*** Set up Passport ***/
+// set up the "username and password" login strategy
+// by setting a function to verify username and password
+passport.use(new LocalStrategy(
+  function(username, password, done) {
+    userDao.getUser(username, password).then((user) => {
+      if (!user)
+        return done(null, false, { message: 'Incorrect username or password.' });
+        
+      return done(null, user);
+    })
+  }
+));
+
+// serialize and de-serialize the user (user object <-> session)
+// we serialize only the user id and store it in the session
+passport.serializeUser((user, done) => {
+  done(null, user.id);
+});
+
+// starting from the data in the session, we extract the current (logged-in) user
+passport.deserializeUser((id, done) => {
+  userDao.getUserById(id)
+    .then(user => {
+      done(null, user); // this will be available in req.user
+    }).catch(err => {
+      done(err, null);
+    });
+});
+
+
+
+
+// custom middleware: check if a given request is coming from an authenticated user
+const isLoggedIn = (req, res, next) => {
+  if(req.isAuthenticated())
+    return next();
+  
+  return res.status(401).json({ error: 'Not authenticated'});
+}
+
+// set up the session
+app.use(session({
+  // by default, Passport uses a MemoryStore to keep track of the sessions
+  secret: 'wge8d239bwd93rkskb',   // change this random string, should be a secret value
+  resave: false,
+  saveUninitialized: false
+}));
+
+// then, init passport
+app.use(passport.initialize());
+app.use(passport.session());
 
 /*** APIs ***/
 
@@ -173,231 +231,53 @@ const errorFormatter = ({ location, msg, param, value, nestedErrors }) => {
   return `${location}[${param}]: ${msg}`;
 };
 
+/*** Users APIs ***/
 
+// POST /sessions 
+// login
+app.post('/api/sessions', function(req, res, next) {
+  passport.authenticate('local', (err, user, info) => {
+    if (err)
+      return next(err);
+      if (!user) {
+        // display wrong login messages
+        return res.status(401).json(info);
+      }
+      // success, perform the login
+      req.login(user, (err) => {
+        if (err)
+          return next(err);
+        
+        // req.user contains the authenticated user, we send all the user info back
+        // this is coming from userDao.getUser()
+        return res.json(req.user);
+      });
+  })(req, res, next);
+});
 
-
-/*** Films APIs ***/
-
+// ALTERNATIVE: if we are not interested in sending error messages...
 /*
-// 1. Retrieve the list of all the available films.
-// GET /api/films
-// This route also handles "filter=?" (optional) query parameter, accessed via  req.query.filter
-app.get('/api/films', 
-  (req, res) => {
-    // get films that match optional filter in the query
-    listFilms(req.query.filter)
-      .then(films => res.json(films))
-      .catch((err) => res.status(500).json(err)); // always return a json and an error message
-  }
-);
-
-// 1bis. OPTIONAL: Retrieve the list of films where the title contains a given string.
-// GET /api/searchFilms?titleSubstring=...
-// This API could be merged with the previous one, if the same route name is desired
-app.get('/api/searchFilms', 
-  (req, res) => {
-    // get films that match optional filter in the query
-    searchFilms(req.query.titleSubstring)
-      .then(films => res.json(films))
-      .catch((err) => res.status(500).json(err)); // always return a json and an error message
-  }
-);
-
-
-// 2. Retrieve a film, given its “id”.
-// GET /api/films/<id>
-// Given a film id, this route returns the associated film from the library.
-app.get('/api/films/:id',
-  [ check('id').isInt({min: 1}) ],    // check: is the id an integer, and is it a positive integer?
-  async (req, res) => {
-    // Is there any validation error?
-    const errors = validationResult(req).formatWith(errorFormatter); // format error message
-    if (!errors.isEmpty()) {
-      return res.status(422).json( errors.errors ); // error message is sent back as a json with the error info
-    }
-    try {
-      const result = await getFilm(req.params.id);
-      if (result.error)   // If not found, the function returns a resolved promise with an object where the "error" field is set
-        res.status(404).json(result);
-      else
-        res.json(result);
-    } catch (err) {
-      res.status(500).end();
-    }
-  }
-);
-
-
-// 3. Create a new film, by providing all relevant information.
-// POST /api/films
-// This route adds a new film to film library.
-app.post('/api/films',
-  [
-    check('title').isLength({min: 1, max: maxTitleLength}),  // double check if a max length applies to your case
-    check('favorite').isBoolean(),
-    // only date (first ten chars) and valid ISO e.g. 2024-02-09
-    check('watchDate').isLength({min: 10, max: 10}).isISO8601({strict: true}).optional({checkFalsy: true}),
-    check('rating').isInt({min: 1, max: 5}),
-  ], 
-  async (req, res) => {
-    // Is there any validation error?
-    const errors = validationResult(req).formatWith(errorFormatter); // format error message
-    if (!errors.isEmpty()) {
-      return res.status(422).json( errors.errors ); // error message is sent back as a json with the error info
-    }
-
-    const film = {
-      title: req.body.title,
-      favorite: req.body.favorite,
-      watchDate: req.body.watchDate,
-      rating: req.body.rating,
-    };
-
-    try {
-      const result = await createFilm(film); // NOTE: createFilm returns the newly created object
-      res.json(result);
-    } catch (err) {
-      res.status(503).json({ error: `Database error during the creation of new film: ${err}` }); 
-    }
-  }
-);
-
-// 4. Update an existing film, by providing all the relevant information
-// PUT /api/films/<id>
-// This route allows to modify a film, specifiying its id and the necessary data.
-app.put('/api/films/:id',
-  [
-    check('id').isInt({min: 1}),    // check: is the id an integer, and is it a positive integer?
-    check('title').isLength({min: 1, max: maxTitleLength}).optional(),
-    check('favorite').isBoolean().optional(),
-    // only date (first ten chars) and valid ISO 
-    check('watchDate').isLength({min: 10, max: 10}).isISO8601({strict: true}).optional({checkFalsy: true}),
-    check('rating').isInt({min: 1, max: 5}).optional(),
-  ],
-  async (req, res) => {
-    // Is there any validation error?
-    const errors = validationResult(req).formatWith(errorFormatter); // format error message
-    if (!errors.isEmpty()) {
-      return res.status(422).json( errors.errors ); // error message is sent back as a json with the error info
-    }
-
-    const filmId = Number(req.params.id);
-    // Is the id in the body present? If yes, is it equal to the id in the url?
-    if (req.body.id && req.body.id !== filmId) {
-      return res.status(422).json({ error: 'URL and body id mismatch' });
-    }
-
-
-    try {
-      const film = await getFilm(filmId);
-      if (film.error)   // If not found, the function returns a resolved promise with an object where the "error" field is set
-        return res.status(404).json(film);
-      const newFilm = {
-        title: req.body.title || film.title,
-        favorite: req.body.favorite || film.favorite,
-        watchDate: req.body.watchDate || film.watchDate,
-        rating: req.body.rating || film.rating,
-      };
-      const result = await updateFilm(film.id, newFilm);
-      if (result.error)
-        res.status(404).json(result);
-      else
-        res.json(result); 
-    } catch (err) {
-      res.status(503).json({ error: `Database error during the update of film ${req.params.id}` });
-    }
-  }
-);
-
-// 5. Mark an existing film as favorite/unfavorite
-// PUT /api/films/<id>/favorite 
-// This route changes only the favorite value, and it is idempotent. It could also be a PATCH method.
-app.put('/api/films/:id/favorite',
-  [
-    check('id').isInt({min: 1}),    // check: is the id an integer, and is it a positive integer?
-    check('favorite').isBoolean(),
-  ],
-  async (req, res) => {
-    // Is there any validation error?
-    const errors = validationResult(req).formatWith(errorFormatter); // format error message
-    if (!errors.isEmpty()) {
-      return res.status(422).json( errors.errors ); // error message is sent back as a json with the error info
-    }
-
-    const filmId = Number(req.params.id);
-    // Is the id in the body present? If yes, is it equal to the id in the url?
-    if (req.body.id && req.body.id !== filmId) {
-      return res.status(422).json({ error: 'URL and body id mismatch' });
-    }
-
-    try {
-      const film = await getFilm(filmId);
-      if (film.error)   // If not found, the function returns a resolved promise with an object where the "error" field is set
-        return res.status(404).json(film);
-      film.favorite = req.body.favorite;  // update favorite property
-      const result = await updateFilm(film.id, film);
-      return res.json(result); 
-    } catch (err) {
-      res.status(503).json({ error: `Database error during the favorite update of film ${req.params.id}` });
-    }
-  }
-);
-
-// 6. Change the rating of a specific film
-// POST /api/films/<id>/change-rating 
-// This route changes the rating value. Note that it must be a POST, not a PUT, because it is NOT idempotent.
-app.post('/api/films/change-rating',
-  [ // These checks will apply to the req.body part
-    check('id').isInt({min: 1}),
-    check('deltaRating').isInt({ min: -4, max: 4 }),
-  ],
-  async (req, res) => {
-    // Is there any validation error?
-    const errors = validationResult(req).formatWith(errorFormatter); // format error message
-    if (!errors.isEmpty()) {
-      return res.status(422).json( errors.errors ); // error message is sent back as a json with the error info
-    }
-
-    try {
-      /* IMPORTANT NOTE: Only for the purpose of this class, DB operations done in the SAME API
-      (such as the following ones) are assumed to be performed without interference from other requests to the DB.
-      In a real case a DB transaction/locking mechanisms should be used. Sqlite does not help in this regard.
-      Thus querying DB with transactions can be avoided for the purpose of this class. 
-      
-      // NOTE: Check if the film exists and the result is a valid rating, before performing the operation
-      const film = await getFilm(req.body.id);
-      if (film.error)
-        return res.status(404).json(film);
-      if (!film.rating)
-        return res.status(422).json({error: `Modification of rating not allowed because rating is not set`});
-      const deltaRating = req.body.deltaRating;
-      if (film.rating + deltaRating > 5 || film.rating + deltaRating < 1)
-        return res.status(422).json({error: `Modification of rating would yield a value out of valid range`});
-      const result = await updateFilmRating(film.id, deltaRating);
-      return res.json(result); 
-    } catch (err) {
-      res.status(503).json({ error: `Database error during the rating update of film ${req.params.id}` });
-    }
-  }
-);
-
-
-// 7. Delete an existing film, given its "id"
-// DELETE /api/films/<id>
-// Given a film id, this route deletes the associated film from the library.
-app.delete('/api/films/:id',
-  [ check('id').isInt({min: 1}) ],
-  async (req, res) => {
-    try {
-      // NOTE: if there is no film with the specified id, the delete operation is considered successful.
-      await deleteFilm(req.params.id);
-      res.status(200).end();  // Empty body 
-    } catch (err) {
-      res.status(503).json({ error: `Database error during the deletion of film ${req.params.id}: ${err} ` });
-    }
-  }
-);
+app.post('/api/sessions', passport.authenticate('local'), (req,res) => {
+  // If this function gets called, authentication was successful.
+  // `req.user` contains the authenticated user.
+  res.json(req.user);
+});
 */
+
+// DELETE /sessions/current 
+// logout
+app.delete('/api/sessions/current', (req, res) => {
+  req.logout( ()=> { res.end(); } );
+});
+
+// GET /sessions/current
+// check whether the user is logged in or not
+app.get('/api/sessions/current', (req, res) => {  if(req.isAuthenticated()) {
+    res.status(200).json(req.user);}
+  else
+    res.status(401).json({error: 'Unauthenticated user!'});;
+});
+
 
 // Activating the server
 const PORT = 3001;

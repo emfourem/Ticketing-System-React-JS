@@ -11,7 +11,7 @@ function CreateRoute(props) {
     return (
         <Row className="justify-content-center mt-5">
             <Col md={8}>
-                <CreationForm createTicket={props.createTicket} />
+                <CreationForm createTicket={props.createTicket} id={props.user && props.user.id}/>
             </Col>
         </Row>
     );
@@ -46,7 +46,7 @@ function CreationForm(props) {
             title: title,
             category: category,
             date: dayjs(),
-            ownerId: 1,
+            ownerId: props.id,
             state: 'open'
         };
 
