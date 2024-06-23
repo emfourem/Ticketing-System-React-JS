@@ -2,16 +2,18 @@ import { useEffect, useState } from "react";
 import { useLocation, useParams, useNavigate } from "react-router-dom";
 import { Col, Row, Button, Card, Form, Alert, Spinner } from 'react-bootstrap';
 import dayjs from 'dayjs';
+import DOMPurify from 'dompurify';
 import API from "../API";
 import '../App.css'; // Import App.css for styles
 
 function BlockRow(props) {
   const b = props.block;
+  const sanitizedText = DOMPurify.sanitize(b.text); // Sanitize HTML content
   return (
     <Card className="mb-3">
       <Card.Header>{b.date.format("YYYY-MM-DD HH:mm")} - {b.author}</Card.Header>
       <Card.Body>
-        <pre>{b.text}</pre>
+        <pre dangerouslySetInnerHTML={{__html: sanitizedText}} />
       </Card.Body>
     </Card>
   );
@@ -172,12 +174,18 @@ function BlocksRoute(props) {
           {state === "close" ? (
             <>
               <Alert variant="danger" className="mb-3">
-                {props.user ? "You cannot create a block. The ticket is closed." : "You cannot create a block. Please log in and try again."}
+                {props.user ? "You cannot create a block. The ticket is closed." : "You cannot create a block. You are not logged in and the ticket is already closed."}
               </Alert>
               <Button variant='warning' onClick={() => { navigate(-1) }}>Go back</Button>
             </>
           ) : (
-            props.user ? <BlockForm createBlock={createBlock} username={props.user.username} /> : <Button variant='warning' onClick={() => { navigate(-1) }}>Go back</Button>
+            props.user ? <BlockForm createBlock={createBlock} username={props.user.username} /> : 
+            <>
+            <Alert variant="warning" className="mb-3">
+              You cannot create a block. Please log in and try again.
+            </Alert>
+            <Button className="mx-2" variant='warning' onClick={() => { navigate(-1) }}>Go back</Button>
+            </>
           )}
         </Col>
       </Row>

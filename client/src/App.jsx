@@ -47,7 +47,7 @@ function MyHeader(props) {
 
 function MyFooter(props) {
   return (
-    <footer className="bg-primary text-white py-3 mt-auto">
+    <footer className="bg-primary text-white py-3 mt-3">
       <Container>
         <Row>
           <Col className="text-center">
