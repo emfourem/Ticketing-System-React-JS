@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useLocation, useParams, Link, useNavigate } from "react-router-dom";
-import { Col, Row, Button, Card, Form, Alert } from 'react-bootstrap';
+import { useLocation, useParams, useNavigate } from "react-router-dom";
+import { Col, Row, Button, Card, Form, Alert, Spinner } from 'react-bootstrap';
 import dayjs from 'dayjs';
 import API from "../API";
 import '../App.css'; // Import App.css for styles
@@ -20,9 +20,15 @@ function BlockRow(props) {
 function Blocks(props) {
   return (
     <div>
-      {props.blocksList.map((t) => (
-        <BlockRow key={t.id} block={t} />
-      ))}
+      {props.blocksList.length === 0 ? (
+        <Card className="mb-3">
+          <Card.Body>No blocks are present</Card.Body>
+        </Card>
+      ) : (
+        props.blocksList.map((t) => (
+          <BlockRow key={t.id} block={t} />
+        ))
+      )}
     </div>
   );
 }
@@ -83,21 +89,44 @@ function BlockForm(props) {
 }
 
 function BlocksRoute(props) {
-  const navigate=useNavigate();
+  const navigate = useNavigate();
   const { ticketId } = useParams();
   const [blocksList, setBlocksList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState('');
   const [state, setState] = useState('');
+  const [title, setTitle] = useState('');
+
+  function handleError(err) {
+    let errMsg = 'Unknown error';
+    if (err.errors) {
+      if (err.errors[0].msg) {
+        errMsg = err.errors[0].msg;
+      }
+    } else {
+      if (err.error) {
+        errMsg = err.error;
+      }
+    }
+    setErrorMsg(errMsg);
+  }
 
   useEffect(() => {
-    API.getTicketById(ticketId)
-      .then((ticket) => { setState(ticket.state) })
-      .catch((err) => console.log(err)); // manage errors
+    const fetchData = async () => {
+      try {
+        const ticket = await API.getTicketById(ticketId);
+        setState(ticket.state);
+        setTitle(ticket.title);
+        const blocks = await API.getAllBlocks(ticketId);
+        setBlocksList(blocks.sort((a, b) => (a.date).isAfter(b.date) ? 1 : -1));
+      } catch (err) {
+        handleError(err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-      API.getAllBlocks(ticketId)
-      .then((list) => {
-        setBlocksList(list.sort((a, b) => (a.date).isAfter(b.date) ? 1 : -1));
-      })
-      .catch((err) => console.log(err));
+    fetchData();
   }, []);
 
   function createBlock(block, ticketId) {
@@ -108,32 +137,48 @@ function BlocksRoute(props) {
       })
       .catch((err) => handleError(err));
   }
-  
 
+  if (loading) {
+    return (
+      <Row>
+        <Col className="text-center">
+          <Spinner animation="border" />
+        </Col>
+      </Row>
+    );
+  }
 
   return (
     <>
       <Row>
         <Col>
-          <h2 className="block-route-title">Additional blocks related to ticket {ticketId}</h2>
+          <h2 className="block-route-title">Ticket title: {title}</h2>
+        </Col>
+      </Row>
+      {errorMsg && (
+        <Row>
+          <Col>
+            <Alert variant='danger'>{errorMsg}</Alert>
+          </Col>
+        </Row>
+      )}
+      <Row>
+        <Col>
+          <Blocks blocksList={blocksList} />
         </Col>
       </Row>
       <Row>
         <Col>
-          <Blocks blocksList={blocksList}/>
-        </Col>
-      </Row>
-      <Row>
-        <Col>
-          {state === "open" && props.user? <BlockForm createBlock={createBlock} username={props.user && props.user.username}/> :
-           (
+          {state === "close" ? (
             <>
               <Alert variant="danger" className="mb-3">
-                {props.user? "You cannot create a block. The ticket is closed.":"You cannot create a block. Please log in and try again."}
+                {props.user ? "You cannot create a block. The ticket is closed." : "You cannot create a block. Please log in and try again."}
               </Alert>
               <Button variant='warning' onClick={() => { navigate(-1) }}>Go back</Button>
             </>
-          ) }
+          ) : (
+            props.user ? <BlockForm createBlock={createBlock} username={props.user.username} /> : <Button variant='warning' onClick={() => { navigate(-1) }}>Go back</Button>
+          )}
         </Col>
       </Row>
     </>

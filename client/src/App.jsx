@@ -1,9 +1,11 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
 import { useState, useEffect } from 'react';
-import { Col, Container, Row, Navbar, Button, Nav } from 'react-bootstrap';
+import { Col, Container, Row, Navbar, Button, Nav, Alert } from 'react-bootstrap';
 import { BrowserRouter, Routes, Route, Outlet, Link, useNavigate, Navigate } from 'react-router-dom'; 
 import './App.css';
+
+import {jwtDecode} from 'jwt-decode';
 
 import { TicketsTable } from './components/TableComponents';
 import { CreateRoute } from './components/CreateRoute';
@@ -74,7 +76,7 @@ function TicketsRoute(props) {
       </Row>
       <Row>
         <Col>
-          <TicketsTable listOfTickets={props.ticketsList} toggleState={props.toggleState} user={props.user}/>
+          <TicketsTable listOfTickets={props.ticketsList} toggleState={props.toggleState} user={props.user} token={props.token} errorMsg = {props.setErrorMsg} changeCat={props.changeCat}/>
         </Col>
       </Row>
       <Row>
@@ -98,10 +100,10 @@ function DefaultRoute(props) {
 
 function App() {
   const [tickets, setTickets] = useState([]);
-  const [refresh, setRefresh] = useState(true);
   const [ errorMsg, setErrorMsg ] = useState('');
   const [user, setUser ] = useState(undefined);
   const [loggedIn, setLoggedIn] = useState(false);
+  const [token, setToken] = useState(null);
 
   function handleError(err) {
     let errMsg = 'Unkwnown error';
@@ -129,11 +131,24 @@ function App() {
       })
       .catch(err => handleError(err));
   }
+
+  function changeCategory(id, category) {
+    API.updateCategory(id, category)
+      .then(() => {
+        const list = tickets.map(t => t.id === id ? { ...t, category: category } : t);
+        setTickets(list);
+      })
+      .catch(err => handleError(err));
+  }
   
 
   function createTicket(ticket) {
     API.createTicket(ticket)
-      .then(() => setRefresh(true))
+      .then((id) => {
+        const newTicket = Object.assign({}, ticket, {id: id, username:user.username});
+        const list = [...tickets, newTicket]
+        setTickets(list.sort((a, b) => (a.date).isAfter(b.date) ? -1 : 1));
+      })
       .catch((err) => handleError(err));
   }
 
@@ -141,13 +156,61 @@ function App() {
     await API.logOut();
     setLoggedIn(false);
     setUser(undefined);
+    //setToken(null);
   }
+
+  const refreshToken = () => {
+    API.getToken()
+      .then((obj) => {
+        const decodedToken = jwtDecode(obj.token);
+        const expirationTime = decodedToken.exp * 1000; // Convert to milliseconds
+        const currentTime = Date.now();
+        const duration = expirationTime - currentTime - 2000; // 
+        setToken(obj.token);
+  
+        // Set timeout to refresh token again before it expires
+        setTimeout(() => {
+          refreshToken();
+        }, duration);
+      })
+      .catch(() => {
+      });
+  };
 
   const loginSuccessful = (user) => {
     setUser(user);
     setLoggedIn(true);
-  }
+    API.getToken()
+    .then((obj) => {
+      const decodedToken = jwtDecode(obj.token);
+      const expirationTime = decodedToken.exp * 1000; // Convert to milliseconds
+      const currentTime = Date.now();
+      const duration = expirationTime - currentTime - 2000; //
 
+      setToken(obj.token);
+      // Set timeout to refresh token before it expires
+      setTimeout(() => {
+        refreshToken();
+      }, duration);
+    }).catch(()=>{});
+  }
+  /*useEffect(() => {
+    if (token) {
+      console.log(token);
+      // Create a new Date object for the current time
+    const currentDateTime = new Date();
+    
+    // Format the date to 'hh:mm' format
+    const formattedTime = currentDateTime.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second:'2-digit',
+      hour12: false // Use `true` for 12-hour format with AM/PM
+    });
+    
+    console.log(formattedTime);
+    }
+  }, [token]);*/
   useEffect(()=> {
     const checkAuth = async() => {
       try {
@@ -155,6 +218,7 @@ function App() {
         const user = await API.getUserInfo();
         setLoggedIn(true);
         setUser(user);
+        refreshToken();
       } catch(err) {
       
       }
@@ -166,17 +230,16 @@ function App() {
     API.getAllTickets()
       .then((list) => {
         setTickets(list.sort((a, b) => (a.date).isAfter(b.date) ? -1 : 1));
-        setRefresh(false);
       })
       .catch((err) => handleError(err));
-  }, [refresh]);
+  }, []);
 
   return (
     <BrowserRouter>
       <Routes>
         <Route path='/' element={<Layout user={user} loggedIn={loggedIn} logout={logout}/>}>
-          <Route index element={ <TicketsRoute ticketsList={tickets} toggleState={toggleState} user={user} errorMsg={errorMsg} setErrorMsg={setErrorMsg}/> } />
-          <Route path='/create' element={ <CreateRoute createTicket={createTicket} user={user} />} />
+          <Route index element={ <TicketsRoute ticketsList={tickets} toggleState={toggleState} user={user} errorMsg={errorMsg} setErrorMsg={setErrorMsg} token={token} changeCat={changeCategory} /> } />
+          <Route path='/create' element={ <CreateRoute createTicket={createTicket} user={user} token={token} />} />
           <Route path='/ticket/:ticketId' element={<BlocksRoute user={user}/>} />
         </Route>
         <Route path='/login' element={loggedIn? <Navigate replace to='/' />:  <LoginForm loginSuccessful={loginSuccessful} />} />

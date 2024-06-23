@@ -11,6 +11,10 @@ const userDao = require('./userDao')
 const cors = require('cors');
 const moment = require('moment');
 
+const jsonwebtoken = require('jsonwebtoken');
+const jwtSecret = '6xvL4xkAAbG49hcXf5GIYSvkDICiUAR6EdR5dLdwW7hMzUjjMUe9t6M5kSAYxsvX';
+const expireTime = 60; //seconds
+
 const corsOptions = {
   origin: 'http://localhost:5173',
   credentials: true,
@@ -95,9 +99,9 @@ app.get('/api/ticket/:id',[
     return res.status(422).json({errors: errors.array()});
   }
   dao.retrieveTicket(req.params.id)
-    .then(state => {
-      if (state !== null) {
-        res.json({ state }); // Send back only the state
+    .then(ticket => {
+      if (ticket !== null) {
+        res.json(ticket);
       } else {
         res.status(404).json({ error: 'Ticket not found' });
       }
@@ -149,8 +153,8 @@ app.post('/api/tickets', [
     };
 
     try {
-      const newTicket = await dao.createTicket(ticket);
-      res.status(201).json(Object.assign({}, newTicket, { username: resultUser.username }));
+      const id = await dao.createTicket(ticket);
+      res.status(201).json(id);
     } catch (err) {
       res.status(503).json({ error: `Database error during the creation of answer ${ticket.text} by ${resultUser.username}.` });
     }
@@ -206,15 +210,38 @@ app.put('/api/ticket/:id', [
   }
 
   const ticket = req.body;
-  if(ticket.id !== req.params.id && ticket.state !== "open" && ticket.state !== "close"){
-    return res.status(422).json({error: `Database error; id ${req.params.id}, tID ${req.body.id}, state ${req.body.state} .`});
-  }
+  if(ticket.state){
+    if(ticket.id !== req.params.id && ticket.state !== "open" && ticket.state !== "close"){
+      return res.status(422).json({error: `Database error; id ${req.params.id}, tID ${req.body.id}, state ${req.body.state} .`});
+    }
 
-  try {
-    await dao.updateTicket(ticket);
-    res.status(200).end();
-  } catch(err) {
-    res.status(503).json({error: `Database error during the update of ticket ${req.params.id}.`});
+    try {
+      await dao.updateTicket(ticket, false);
+      res.status(200).end();
+    } catch(err) {
+      res.status(503).json({error: `Database error during the update of ticket ${req.params.id}.`});
+    }
+  }else{
+    //ticket.category
+    console.log("category");
+    const Category = {
+      payment: 'payment',
+      maintenance: 'maintenance',
+      inquiry: 'inquiry',
+      newFeature: 'new feature',
+      administrative: 'administrative'
+  };
+    if(ticket.id !== req.params.id && !Object.values(Category).includes(ticket.category)){
+      return res.status(422).json({error: `Database error; id ${req.params.id}, tID ${req.body.id}, category ${req.body.category} .`});
+    }
+
+    try {
+      await dao.updateTicket(ticket, true);
+      res.status(200).end();
+    } catch(err) {
+      res.status(503).json({error: `Database error during the update of ticket ${req.params.id}.`});
+    }
+
   }
 
 });
@@ -276,6 +303,18 @@ app.get('/api/sessions/current', (req, res) => {  if(req.isAuthenticated()) {
     res.status(200).json(req.user);}
   else
     res.status(401).json({error: 'Unauthenticated user!'});;
+});
+
+/*** Token ***/
+
+// GET /api/auth-token
+app.get('/api/auth-token', isLoggedIn, (req, res) => {
+  let authLevel = req.user.admin===1?"admin":"user";
+
+  const payloadToSign = { access: authLevel, authId: 1234 };
+  const jwtToken = jsonwebtoken.sign(payloadToSign, jwtSecret, {expiresIn: expireTime});
+  console.log({token: jwtToken, authLevel: authLevel});
+  res.json({token: jwtToken, authLevel: authLevel});  // authLevel is just for debug. Anyway it is in the JWT payload
 });
 
 

@@ -18,13 +18,22 @@ async function getAllTickets() {
 }
 
 async function getTicketById(id) {
-  // call  /api/ticket/:id
-  const response = await fetch(URL+`/ticket/${id}`);
-  const data = await response.json();
+  const response = await fetch(URL + `/ticket/${id}`);
+  const ticket = await response.json();
+  
   if (response.ok) {
-    return data
+    // Directly returning the ticket object after converting the date to dayjs
+    return {
+      id: ticket.id,
+      text: ticket.text,
+      title: ticket.title,
+      date: dayjs(ticket.date),
+      category: ticket.category,
+      state: ticket.state,
+      ownerId: ticket.ownerId
+    };
   } else {
-    throw data;  // expected to be a json object (coming from the server) with info about the errors
+    throw ticket;  // expected to be a json object (coming from the server) with info about the errors
   }
 }
 
@@ -109,6 +118,28 @@ function updateState(id, state) {
   });
 }
 
+function updateCategory(id, category) {
+  // call  PUT /api/answers/<id>
+  return new Promise((resolve, reject) => {
+    fetch(URL+`/ticket/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ id: id, category: category })
+    }).then((response) => {
+      if (response.ok) {
+        resolve(null);
+      } else {
+        // analyze the cause of error
+        response.json()
+          .then((message) => { reject(message); }) // error message in the response body
+          .catch(() => { reject({ error: "Cannot parse server response." }) }); // something else
+      }
+    }).catch(() => { reject({ error: "Cannot communicate with the server." }) }); // connection errors
+  });
+}
+
 async function logIn(credentials) {
   let response = await fetch(URL + '/sessions', {
     method: 'POST',
@@ -146,5 +177,36 @@ async function getUserInfo() {
   }
 }
 
-const API = {getAllTickets, createTicket, getAllBlocks, createBlock, updateState, getTicketById, logIn, logOut, getUserInfo};
+async function getToken() {
+  const response = await fetch(URL+'/auth-token', {
+    credentials: 'include'
+  });
+  const token = await response.json();
+  if (response.ok) {
+    return token;
+  } else {
+    throw token;  // an object with the error coming from the server
+  }
+}
+
+async function getEstimation(authToken, text) {
+  // retrieve info from an external server, where info can be accessible only via JWT token
+  const response = await fetch('http://localhost:3002'+`/api/estimation`, {
+    method: 'POST',
+    headers: { 
+      'Authorization': `Bearer ${authToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({text: text}),
+  });
+  const info = await response.json();
+  if (response.ok) {
+    return info;
+  } else {
+    throw info;  // expected to be a json object (coming from the server) with info about the error
+  }
+}
+
+
+const API = {getAllTickets, createTicket, getAllBlocks, createBlock, updateState, getTicketById, logIn, logOut, getUserInfo, getToken, getEstimation, updateCategory};
 export default API;

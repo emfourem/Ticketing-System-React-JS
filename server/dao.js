@@ -38,14 +38,22 @@ exports.listTickets = () => {
 
 exports.retrieveTicket = (id) => {
   return new Promise((resolve, reject) => {
-    const sql = 'SELECT state FROM tickets WHERE id = ?';
+    const sql = 'SELECT * FROM tickets WHERE id = ?';
     db.get(sql, [id], (err, row) => {
       if (err) {
         reject(err);
         return;
       }
       if (row) {
-        resolve(row.state);
+        resolve({
+          id: row.id,
+          title: row.title,
+          text: row.text,
+          state: row.state,
+          category: row.category,
+          date: dayjs(row.date),
+          ownerId: row.ownerId,
+        });
       } else {
         resolve(null);  // or reject(new Error('Ticket not found'));
       }
@@ -145,7 +153,7 @@ exports.createTicket = (ticket) => {
         reject(err);
         return;
       }
-      resolve(exports.getTicket(this.lastID));
+      resolve(this.lastID);
     });
   });
 };
@@ -163,15 +171,28 @@ exports.createBlock = (block) => {
   });
 };
 
-exports.updateTicket = (ticket) => {
-  return new Promise((resolve, reject) => {
-    const sql = 'UPDATE tickets SET state = ? WHERE id = ?';
-    db.run(sql, [ticket.state, ticket.id], function (err) {
-      if (err) {
-        reject(err);
-        return;
-      }
-      resolve(this.changes);
+exports.updateTicket = (ticket, flag) => {
+  if(flag){
+    return new Promise((resolve, reject) => {
+      const sql = 'UPDATE tickets SET category = ? WHERE id = ?';
+      db.run(sql, [ticket.category, ticket.id], function (err) {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(this.changes);
+      });
     });
-  });
+  }else{
+    return new Promise((resolve, reject) => {
+      const sql = 'UPDATE tickets SET state = ? WHERE id = ?';
+      db.run(sql, [ticket.state, ticket.id], function (err) {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(this.changes);
+      });
+    });
+  }
 };

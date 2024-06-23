@@ -1,17 +1,18 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button, Form, Alert, Row, Col, Dropdown, Card } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
-import '../App.css'
+import '../App.css';
 import { Category } from '../ticket';
+import API from '../API';
 
 function CreateRoute(props) {
     return (
         <Row className="justify-content-center mt-5">
             <Col md={8}>
-                <CreationForm createTicket={props.createTicket} id={props.user && props.user.id}/>
+                <CreationForm createTicket={props.createTicket} id={props.user && props.user.id} admin={props.user && props.user.admin} token={props.token}/>
             </Col>
         </Row>
     );
@@ -25,6 +26,19 @@ function CreationForm(props) {
     const [category, setCategory] = useState('Select a category');
     const [errorMsg, setErrorMsg] = useState('');
     const [isReviewMode, setIsReviewMode] = useState(false);
+    const [estimation, setEstimation] = useState(null); // State to hold the estimation value
+
+    useEffect(() => {
+        // Fetch the estimation when the component mounts
+        if (isReviewMode && props.token) {
+            API.getEstimation(props.token, title, category).then(res => {
+                setEstimation(res.estimation);
+            }).catch(err => {
+                console.error('Failed to fetch estimation:', err);
+                setEstimation(null); // Set estimation to null or handle error case
+            });
+        }
+    }, [isReviewMode, props.token, title, category]);
 
     function handleSubmit(event) {
         event.preventDefault();
@@ -114,10 +128,15 @@ function CreationForm(props) {
                         </Form>
                     ) : (
                         <div>
-                            <h5 className="mb-3">Review Your Ticket</h5>
+                            {/*<h5 className="mb-3"><strong>Review Your Ticket</strong></h5>*/}
                             <p><strong>Title:</strong> {title}</p>
                             <p><strong>Text:</strong> {text}</p>
                             <p><strong>Category:</strong> {category}</p>
+                            {estimation !== null && ( // Render only if estimation is available
+                                props.admin === 1 ?
+                                <p><strong>Estimated closure in</strong> {estimation} <strong> hours</strong></p> :
+                                <p><strong>Estimated closure in</strong> {estimation} <strong> days</strong></p>
+                            )}
                             <div className='my-3'>
                                 <Button className="mx-2" variant="success" onClick={handleConfirmSubmit}>Confirm</Button>
                                 <Button variant='secondary' onClick={handleEdit}>Edit</Button>
