@@ -156,7 +156,7 @@ function App() {
     await API.logOut();
     setLoggedIn(false);
     setUser(undefined);
-    //setToken(null);
+    setToken(null);
   }
 
   const refreshToken = () => {
@@ -194,23 +194,7 @@ function App() {
       }, duration);
     }).catch(()=>{});
   }
-  /*useEffect(() => {
-    if (token) {
-      console.log(token);
-      // Create a new Date object for the current time
-    const currentDateTime = new Date();
-    
-    // Format the date to 'hh:mm' format
-    const formattedTime = currentDateTime.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second:'2-digit',
-      hour12: false // Use `true` for 12-hour format with AM/PM
-    });
-    
-    console.log(formattedTime);
-    }
-  }, [token]);*/
+
   useEffect(()=> {
     const checkAuth = async() => {
       try {

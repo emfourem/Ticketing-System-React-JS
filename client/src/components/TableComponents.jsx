@@ -5,6 +5,7 @@ import { Button, Table, Dropdown } from 'react-bootstrap';
 import API from '../API';
 import { useState, useEffect } from 'react';
 import { Category } from '../ticket';
+import DOMPurify from 'dompurify';
 
 
 function ExpandButton(props) {
@@ -32,13 +33,22 @@ function TicketRow(props) {
         }
     }, [props.token, flag]);
 
-    const t = props.ticket;
+    const t = {
+        ...props.ticket,
+        id: parseInt(props.ticket.id),
+        title: DOMPurify.sanitize(props.ticket.title),
+        date: DOMPurify.sanitize(props.ticket.date.format("YYYY-MM-DD HH:mm")),
+        state: DOMPurify.sanitize(props.ticket.state),
+        category: DOMPurify.sanitize(props.ticket.category),
+        username: DOMPurify.sanitize(props.ticket.username)
+    };
+
     const categories = Object.values(Category).filter(cat => cat !== t.category);
 
     return (
         <tr>
             <td>{t.title}</td>
-            <td>{t.date.format("YYYY-MM-DD HH:mm")}</td>
+            <td>{t.date}</td>
             <td>{t.username}</td>
             <td>{t.category}</td>
             <td>{t.state}</td>

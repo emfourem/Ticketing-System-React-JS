@@ -56,6 +56,7 @@ function createTicket(ticket) {
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include',
       body: JSON.stringify(Object.assign({}, ticket, {date: ticket.date.format("YYYY-MM-DD HH:mm")}))
     }).then((response) => {
       if (response.ok) {
@@ -80,6 +81,7 @@ function createBlock(block, id) {
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include',
       body: JSON.stringify(Object.assign({}, block, {date: block.date.format("YYYY-MM-DD HH:mm")}))
     }).then((response) => {
       if (response.ok) {
@@ -104,6 +106,7 @@ function updateState(id, state) {
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include',
       body: JSON.stringify({ id: id, state: state })
     }).then((response) => {
       if (response.ok) {
@@ -126,6 +129,7 @@ function updateCategory(id, category) {
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include',
       body: JSON.stringify({ id: id, category: category })
     }).then((response) => {
       if (response.ok) {

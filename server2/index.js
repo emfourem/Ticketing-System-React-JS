@@ -38,11 +38,8 @@ app.use(jwt({
 );
 
 
-// To return a better object in case of errors
 app.use( function (err, req, res, next) {
-  console.log("DEBUG: error handling function executed");
   if (err.name === 'UnauthorizedError') {
-    // Example of err content:  {"code":"invalid_token","status":401,"name":"UnauthorizedError","inner":{"name":"TokenExpiredError","message":"jwt expired","expiredAt":"2024-05-23T19:23:58.000Z"}}
     res.status(401).json({ errors: [{  'param': 'Server', 'msg': 'Authorization error', 'path': err.code }] });
   } else {
     next();
@@ -54,11 +51,9 @@ app.use( function (err, req, res, next) {
 
 // POST /api/suggestions
 app.post('/api/estimation', (req, res) => {
-  console.log('DEBUG: req.auth: ', req.auth);
   const authAccessLevel = req.auth.access;
   const title = req.body.title || '';
   const category = req.body.category || '';
-  let estimation = 0;
 
   // Function to count characters excluding spaces
   const countCharsExcludingSpaces = (str) => {

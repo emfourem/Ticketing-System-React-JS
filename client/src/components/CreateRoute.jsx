@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button, Form, Alert, Row, Col, Dropdown, Card } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
+import DOMPurify from 'dompurify';
 import '../App.css';
 import { Category } from '../ticket';
 import API from '../API';
@@ -56,11 +57,11 @@ function CreationForm(props) {
 
     function handleConfirmSubmit() {
         const ticket = {
-            text: text,
-            title: title,
+            text: DOMPurify.sanitize(text),
+            title: DOMPurify.sanitize(title),
             category: category,
             date: dayjs(),
-            ownerId: props.id,
+            ownerId: parseInt(props.id),
             state: 'open'
         };
 
@@ -129,9 +130,9 @@ function CreationForm(props) {
                     ) : (
                         <div>
                             {/*<h5 className="mb-3"><strong>Review Your Ticket</strong></h5>*/}
-                            <p><strong>Title:</strong> {title}</p>
-                            <p><strong>Text:</strong> {text}</p>
-                            <p><strong>Category:</strong> {category}</p>
+                            <p><strong>Title:</strong> {DOMPurify.sanitize(title)}</p>
+                            <p><strong>Text:</strong> {DOMPurify.sanitize(text)}</p>
+                            <p><strong>Category:</strong> {DOMPurify.sanitize(category)}</p>
                             {estimation !== null && ( // Render only if estimation is available
                                 props.admin === 1 ?
                                 <p><strong>Estimated closure in</strong> {estimation} <strong> hours</strong></p> :

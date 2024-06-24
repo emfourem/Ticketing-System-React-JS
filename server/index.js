@@ -3,11 +3,13 @@
 const express = require('express');
 const morgan = require('morgan'); // logging middleware
 const {check, validationResult} = require('express-validator'); // validation middleware
+const validator = require('validator');
 const passport = require('passport'); // auth middleware
 const LocalStrategy = require('passport-local'); // username and password for login
 const session = require('express-session'); // enable sessions
 const dao = require('./dao');
-const userDao = require('./userDao')
+const userDao = require('./userDao');
+const sanitizeHtml = require('sanitize-html');
 const cors = require('cors');
 const moment = require('moment');
 
@@ -73,7 +75,7 @@ const isLoggedIn = (req, res, next) => {
 // set up the session
 app.use(session({
   // by default, Passport uses a MemoryStore to keep track of the sessions
-  secret: 'wge8d239bwd93rkskb',   // change this random string, should be a secret value
+  secret: 'aqpo9182uehdb27191203sna',   // change this random string, should be a secret value
   resave: false,
   saveUninitialized: false
 }));
@@ -110,7 +112,7 @@ app.get('/api/ticket/:id',[
 });
 
 app.get('/api/blocks/:id' ,[
-  check("id").isInt()
+  check("id").isInt().toInt()
 ], (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -121,18 +123,18 @@ app.get('/api/blocks/:id' ,[
     .catch(() => res.status(500).end());
 });
 
-app.post('/api/tickets', [
-  check('ownerId').isInt(),
-  check('title').isLength({min: 1 , max:100}),
+app.post('/api/tickets', isLoggedIn, [
+  check('ownerId').isInt().toInt(),
+  check('title').isLength({min: 1 , max:100}).trim().escape(),
   check('text').isLength({min: 1}),
-  check('state').isIn(['open','close']),
-  check('category').isIn(['payment', 'maintenance', 'inquiry', 'new feature', 'administrative']),
+  check('state').isIn(['open','close']).trim().escape(),
+  check('category').isIn(['payment', 'maintenance', 'inquiry', 'new feature', 'administrative']).trim().escape(),
   check('date').custom((value) => {
     if (!moment(value, 'YYYY-MM-DD HH:mm', true).isValid()) {
         throw new Error('Invalid date format, should be YYYY-MM-DD HH:mm');
     }
     return true;
-})
+}).trim().escape()
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -143,9 +145,13 @@ app.post('/api/tickets', [
   if (resultUser.error)
     res.status(404).json(resultUser);   // questionId does not exist, please insert the question before the answer
   else {
+    const sanitizedText = sanitizeHtml(req.body.text, {
+      allowedTags: ['b', 'i', 'em', 'br'],
+      allowedAttributes: {}
+    });
     const ticket = {
       title: req.body.title,
-      text: req.body.text,
+      text: sanitizedText,
       state: req.body.state,
       category: req.body.category,
       date: req.body.date,
@@ -164,15 +170,15 @@ app.post('/api/tickets', [
 
 //sanitize the text to be formatted also after the storing
 
-app.post('/api/ticket/:id/addBlock', [
+app.post('/api/ticket/:id/addBlock', isLoggedIn, [
   check('text').isLength({min: 1}),
-  check('author').isLength({min: 1, max:20}),
+  check('author').isLength({min: 1, max:20}).trim().escape(),
   check('date').custom((value) => {
     if (!moment(value, 'YYYY-MM-DD HH:mm', true).isValid()) {
         throw new Error('Invalid date format, should be YYYY-MM-DD HH:mm');
     }
     return true;
-})
+}).trim().escape()
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -185,11 +191,15 @@ app.post('/api/ticket/:id/addBlock', [
   if (resultUser.error && resultTicket.error )
     res.status(404).json(resultUser);   // questionId does not exist, please insert the question before the answer
   else {
+    const sanitizedText = sanitizeHtml(req.body.text, {
+      allowedTags: ['b', 'i', 'em', 'br'],
+      allowedAttributes: {}
+    });
     const block = {
-      text: req.body.text,
+      text: sanitizedText,
       date: req.body.date,
       author: req.body.author,
-      ticketId: req.params.id
+      ticketId: parseInt(req.params.id)
     };
 
     try {
@@ -201,8 +211,10 @@ app.post('/api/ticket/:id/addBlock', [
   }
 });
 
-app.put('/api/ticket/:id', [
-  check('id').isInt()
+app.put('/api/ticket/:id', isLoggedIn, [
+  check('id').isInt().toInt(),
+  check('state').optional().isIn(['open', 'close']),
+  check('category').optional().isIn(['payment', 'maintenance', 'inquiry', 'new feature', 'administrative']),
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -210,53 +222,25 @@ app.put('/api/ticket/:id', [
   }
 
   const ticket = req.body;
+  if(ticket.id !== parseInt(req.params.id)){
+    return res.status(422).json({error: `Database error; parameters are wrong.`});
+  }
   if(ticket.state){
-    if(ticket.id !== req.params.id && ticket.state !== "open" && ticket.state !== "close"){
-      return res.status(422).json({error: `Database error; id ${req.params.id}, tID ${req.body.id}, state ${req.body.state} .`});
-    }
-
     try {
       await dao.updateTicket(ticket, false);
       res.status(200).end();
     } catch(err) {
-      res.status(503).json({error: `Database error during the update of ticket ${req.params.id}.`});
+      res.status(503).json({error: `Database error during the update of the state of the ticket.`});
     }
   }else{
-    //ticket.category
-    console.log("category");
-    const Category = {
-      payment: 'payment',
-      maintenance: 'maintenance',
-      inquiry: 'inquiry',
-      newFeature: 'new feature',
-      administrative: 'administrative'
-  };
-    if(ticket.id !== req.params.id && !Object.values(Category).includes(ticket.category)){
-      return res.status(422).json({error: `Database error; id ${req.params.id}, tID ${req.body.id}, category ${req.body.category} .`});
-    }
-
     try {
       await dao.updateTicket(ticket, true);
       res.status(200).end();
     } catch(err) {
-      res.status(503).json({error: `Database error during the update of ticket ${req.params.id}.`});
+      res.status(503).json({error: `Database error during the update of the category of the ticket.`});
     }
-
   }
-
 });
-
-/*** Utility Functions ***/
-
-// Make sure to set a reasonable value (not too small!) depending on the application constraints
-// It is recommended to have a limit here or in the DB constraints to avoid malicious requests waste space in DB and network bandwidth.
-// const maxTitleLength = 160;
-
-
-// This function is used to format express-validator errors as strings
-const errorFormatter = ({ location, msg, param, value, nestedErrors }) => {
-  return `${location}[${param}]: ${msg}`;
-};
 
 /*** Users APIs ***/
 
@@ -313,7 +297,6 @@ app.get('/api/auth-token', isLoggedIn, (req, res) => {
 
   const payloadToSign = { access: authLevel, authId: 1234 };
   const jwtToken = jsonwebtoken.sign(payloadToSign, jwtSecret, {expiresIn: expireTime});
-  console.log({token: jwtToken, authLevel: authLevel});
   res.json({token: jwtToken, authLevel: authLevel});  // authLevel is just for debug. Anyway it is in the JWT payload
 });
 

@@ -6,9 +6,12 @@ import DOMPurify from 'dompurify';
 import API from "../API";
 import '../App.css'; // Import App.css for styles
 
+
+
 function BlockRow(props) {
   const b = props.block;
-  const sanitizedText = DOMPurify.sanitize(b.text); // Sanitize HTML content
+  const allowedTags = ['b', 'i', 'em', 'br']; // Tags you want to allow
+  const sanitizedText = DOMPurify.sanitize(b.text, { ALLOWED_TAGS: allowedTags });
   return (
     <Card className="mb-3">
       <Card.Header>{b.date.format("YYYY-MM-DD HH:mm")} - {b.author}</Card.Header>
@@ -48,13 +51,15 @@ function BlockForm(props) {
     if (blockText === '') {
       setErrorMsg('Text cannot be empty! Please add some text.');
     } else {
+      const allowedTags = ['b', 'i', 'em', 'br']; // Tags you want to allow
+      const sanitizedText = DOMPurify.sanitize(blockText, { ALLOWED_TAGS: allowedTags });
       const block = {
-        text: blockText,
+        text: sanitizedText,
         date: dayjs(),
         author: props.username 
       };
       
-      props.createBlock(block, ticketId);
+      props.createBlock(block, parseInt(ticketId));
       setBlockText('');
       setErrorMsg('');
     }
@@ -117,8 +122,8 @@ function BlocksRoute(props) {
     const fetchData = async () => {
       try {
         const ticket = await API.getTicketById(ticketId);
-        setState(ticket.state);
-        setTitle(ticket.title);
+        setState(DOMPurify.sanitize(ticket.state));
+        setTitle(DOMPurify.sanitize(ticket.title));
         const blocks = await API.getAllBlocks(ticketId);
         setBlocksList(blocks.sort((a, b) => (a.date).isAfter(b.date) ? 1 : -1));
       } catch (err) {
@@ -160,7 +165,7 @@ function BlocksRoute(props) {
       {errorMsg && (
         <Row>
           <Col>
-            <Alert variant='danger'>{errorMsg}</Alert>
+            <Alert variant='danger' dismissible onClose={() => setErrorMsg('')}>{errorMsg}</Alert>
           </Col>
         </Row>
       )}
