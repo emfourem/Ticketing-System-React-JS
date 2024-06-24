@@ -124,8 +124,12 @@ function BlocksRoute(props) {
         const ticket = await API.getTicketById(ticketId);
         setState(DOMPurify.sanitize(ticket.state));
         setTitle(DOMPurify.sanitize(ticket.title));
+        const allowedTags = ['b', 'i', 'em', 'br']; // Tags you want to allow
+        const text= DOMPurify.sanitize(ticket.text, { ALLOWED_TAGS: allowedTags });
+        const firstBlock = {id: ticket.id, text:text, date: dayjs(ticket.date), author: ticket.username } 
         const blocks = await API.getAllBlocks(ticketId);
-        setBlocksList(blocks.sort((a, b) => (a.date).isAfter(b.date) ? 1 : -1));
+        const sortedBlocks = blocks.sort((a, b) => (a.date).isAfter(b.date) ? 1 : -1)
+        setBlocksList([firstBlock,...sortedBlocks]);
       } catch (err) {
         handleError(err);
       } finally {

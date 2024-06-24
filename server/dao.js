@@ -39,12 +39,13 @@ exports.listTickets = () => {
 exports.retrieveTicket = (id) => {
   return new Promise((resolve, reject) => {
     const sql = 'SELECT * FROM tickets WHERE id = ?';
-    db.get(sql, [id], (err, row) => {
+    db.get(sql, [id], async (err, row) => {
       if (err) {
         reject(err);
         return;
       }
       if (row) {
+        const user = await exports.getUser(row.ownerId);
         resolve({
           id: row.id,
           title: row.title,
@@ -53,6 +54,7 @@ exports.retrieveTicket = (id) => {
           category: row.category,
           date: dayjs(row.date),
           ownerId: row.ownerId,
+          username: user.username
         });
       } else {
         resolve(null);  // or reject(new Error('Ticket not found'));

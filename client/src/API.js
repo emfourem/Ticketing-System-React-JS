@@ -30,7 +30,8 @@ async function getTicketById(id) {
       date: dayjs(ticket.date),
       category: ticket.category,
       state: ticket.state,
-      ownerId: ticket.ownerId
+      ownerId: ticket.ownerId,
+      username: ticket.username
     };
   } else {
     throw ticket;  // expected to be a json object (coming from the server) with info about the errors

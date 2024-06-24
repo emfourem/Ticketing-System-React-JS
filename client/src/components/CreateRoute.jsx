@@ -51,26 +51,32 @@ function CreationForm(props) {
         else if (!Object.values(Category).includes(category)) {
             setErrorMsg('Improper category was used! Please modify it.');
         } else {
+            const allowedTags = ['b', 'i', 'em', 'br']; // Tags you want to allow
+            const sanitizedText = DOMPurify.sanitize(text, { ALLOWED_TAGS: allowedTags });
+            setText(text);
             setIsReviewMode(true);
         }
     }
 
     function handleConfirmSubmit() {
+        const allowedTags = ['b', 'i', 'em', 'br']; // Tags you want to allow
+        const sanitizedText = DOMPurify.sanitize(text, { ALLOWED_TAGS: allowedTags });
         const ticket = {
-            text: DOMPurify.sanitize(text),
+            text: sanitizedText,
             title: DOMPurify.sanitize(title),
             category: category,
             date: dayjs(),
             ownerId: parseInt(props.id),
             state: 'open'
         };
-
+        setErrorMsg('');
         props.createTicket(ticket);
         navigate('/');
     }
 
     function handleEdit() {
         setIsReviewMode(false);
+        setErrorMsg('');
     }
 
     return (
@@ -85,7 +91,7 @@ function CreationForm(props) {
                                 <Form.Label>Title</Form.Label>
                                 <Form.Control 
                                     required 
-                                    placeholder="Insert the title" 
+                                    placeholder="Insert the title without tags" 
                                     type="text" 
                                     name="title" 
                                     value={title} 
@@ -129,9 +135,8 @@ function CreationForm(props) {
                         </Form>
                     ) : (
                         <div>
-                            {/*<h5 className="mb-3"><strong>Review Your Ticket</strong></h5>*/}
                             <p><strong>Title:</strong> {DOMPurify.sanitize(title)}</p>
-                            <p><strong>Text:</strong> {DOMPurify.sanitize(text)}</p>
+                            <p><strong>Text:</strong> <span dangerouslySetInnerHTML={{ __html: text }} /></p>
                             <p><strong>Category:</strong> {DOMPurify.sanitize(category)}</p>
                             {estimation !== null && ( // Render only if estimation is available
                                 props.admin === 1 ?
