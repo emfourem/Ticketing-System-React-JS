@@ -86,7 +86,7 @@ function CreationForm(props) {
         <>
             {errorMsg && <Alert variant='danger' dismissible onClose={() => setErrorMsg('')}>{errorMsg}</Alert>}
             <Card className="mb-3">
-                <Card.Header className="bg-primary text-white">{!isReviewMode ? 'Create New Ticket' : 'Review Your Ticket'}</Card.Header>
+                <Card.Header className="bg-dark text-white">{!isReviewMode ? 'Create New Ticket' : 'Review Your Ticket'}</Card.Header>
                 <Card.Body>
                     {!isReviewMode ? (
                         <Form onSubmit={handleSubmit}>
@@ -118,7 +118,7 @@ function CreationForm(props) {
                             <Form.Group>
                                 <Form.Label>Choose a category</Form.Label>
                                 <Dropdown required onSelect={(eventKey) => setCategory(eventKey)}>
-                                    <Dropdown.Toggle variant="primary" className="text-white">
+                                    <Dropdown.Toggle variant="dark" className="text-white">
                                         {category}
                                     </Dropdown.Toggle>
                                     <Dropdown.Menu>
@@ -132,8 +132,8 @@ function CreationForm(props) {
                             </Form.Group>
 
                             <div className='my-3'>
-                                <Button className="mx-2" type='submit' variant="primary">Create</Button>
-                                <Button variant='warning' onClick={() => { navigate('/') }}>Go back</Button>
+                                <Button className="mx-2" type='submit' variant="success">Create</Button>
+                                <Button variant='warning' onClick={() => { navigate('/') }}>Back</Button>
                             </div>
                         </Form>
                     ) : (
@@ -147,8 +147,8 @@ function CreationForm(props) {
                                 <p><strong>Estimated closure in</strong> {estimation} <strong> days</strong></p>
                             )}
                             <div className='my-3'>
-                                <Button className="mx-2" variant="success" onClick={handleConfirmSubmit}>Confirm</Button>
-                                <Button variant='secondary' onClick={handleEdit}>Edit</Button>
+                                <Button className="mx-2" variant="success" onClick={handleConfirmSubmit}>Add</Button>
+                                <Button variant="warning" onClick={handleEdit}>Edit</Button>
                             </div>
                         </div>
                     )}

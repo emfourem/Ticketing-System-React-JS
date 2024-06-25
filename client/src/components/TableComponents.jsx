@@ -75,7 +75,7 @@ function TicketRow(props) {
                         </td>
                         <td>
                         <Dropdown>
-                            <Dropdown.Toggle variant="secondary" id="dropdown-state">
+                            <Dropdown.Toggle variant="primary" id="dropdown-state">
                                 Select new Category
                             </Dropdown.Toggle>
                             <Dropdown.Menu>

@@ -3,23 +3,21 @@ import 'bootstrap-icons/font/bootstrap-icons.css';
 import { useState, useEffect } from 'react';
 import { Col, Container, Row, Navbar, Button, Nav, Alert } from 'react-bootstrap';
 import { BrowserRouter, Routes, Route, Outlet, Link, useNavigate, Navigate } from 'react-router-dom'; 
-import './App.css';
-
 import {jwtDecode} from 'jwt-decode';
-
 import { TicketsTable } from './components/TableComponents';
 import { CreateRoute } from './components/CreateRoute';
 import { BlocksRoute } from './components/BlocksRoute';
 import { LoginForm } from './components/AuthComponents';
 import API from './API';
+import './App.css';
 
 function MyHeader(props) {
   const { user, logout } = props;
 
   return (
-    <Navbar bg="primary" variant="dark" expand="lg" className="py-3">
+    <Navbar bg="dark" variant="dark" expand="lg" className="py-3">
       <Navbar.Brand className="mx-2 d-flex align-items-center">
-        <i className="bi bi-ticket" style={{ fontSize: '1.8rem' }} />
+        <i className="bi bi-ticket" style={{ fontSize: '2.5rem' }} />
         <span className="ms-2">Ticketing System</span>
       </Navbar.Brand>
       <Navbar.Toggle aria-controls="basic-navbar-nav" />
@@ -35,7 +33,7 @@ function MyHeader(props) {
             </div>
           ) : (
             <Link to='/login'>
-              <Button className='mx-2' variant='warning'>Login</Button>
+              <Button className='mx-2' variant='success'>Login</Button>
             </Link>
           )}
         </Nav>
@@ -47,7 +45,7 @@ function MyHeader(props) {
 
 function MyFooter(props) {
   return (
-    <footer className="bg-primary text-white py-3 mt-3">
+    <footer className="bg-dark text-white py-3 mt-3">
       <Container>
         <Row>
           <Col className="text-center">
@@ -71,7 +69,7 @@ function TicketsRoute(props) {
       </Row>
       <Row className="mb-4">
         <Col>
-          <h2 className="text-center text-primary border-bottom pb-2">List of Tickets</h2>
+          <h2 className="text-center text-dark border-bottom pb-2">List of Tickets</h2>
         </Col>
       </Row>
       <Row>
@@ -82,7 +80,7 @@ function TicketsRoute(props) {
       <Row>
         {props.user?
         <Col className="d-flex justify-content-center">
-            <Button   className="p-3" onClick={()=>navigate('/create')}>New Ticket</Button> 
+            <Button variant="warning"  className="p-3" onClick={()=>navigate('/create')}>New Ticket</Button> 
         </Col>
         : null}
       </Row>

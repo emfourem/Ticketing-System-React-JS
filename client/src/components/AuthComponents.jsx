@@ -87,7 +87,7 @@ function LoginForm(props) {
                   </InputGroup>
                 </Form.Group>
                 <div className="d-flex justify-content-between">
-                  <Button variant="primary" type="submit">
+                  <Button variant="success" type="submit">
                     Login
                   </Button>
                   <Button variant="danger" onClick={() => navigate(-1)}>

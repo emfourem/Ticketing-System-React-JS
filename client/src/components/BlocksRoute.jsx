@@ -18,7 +18,7 @@ function BlockRow(props) {
   console.log(sanitizedText);*/
   return (
     <Card className="mb-3">
-      <Card.Header>{b.date.format("YYYY-MM-DD HH:mm")} - {DOMPurify.sanitize(b.author)}</Card.Header>
+      <Card.Header className="bg-dark">{b.date.format("YYYY-MM-DD HH:mm")} - {DOMPurify.sanitize(b.author)}</Card.Header>
       <Card.Body>
         <div dangerouslySetInnerHTML={{__html: DOMPurify.sanitize(b.text)}} />
       </Card.Body>
@@ -71,7 +71,7 @@ function BlockForm(props) {
     <>
       {errorMsg ? <Alert variant='danger' dismissible onClose={() => setErrorMsg('')}>{errorMsg}</Alert> : false}
       <Card className="mb-3">
-        <Card.Header className="custom-card-header">Add New Block</Card.Header>
+        <Card.Header className="custom-card-header bg-dark">Add New Block</Card.Header>
         <Card.Body>
           <Form onSubmit={handleSubmit}>
             <Form.Group>
@@ -87,8 +87,8 @@ function BlockForm(props) {
               />
             </Form.Group>
             <div className='my-2'>
-              <Button className="mx-2" type='submit' variant="primary">Add</Button>
-              <Button variant='warning' onClick={() => { navigate(-1) }}>Go back</Button>
+              <Button className="mx-2 bg-success" type='submit' variant="primary">Add</Button>
+              <Button variant='warning' onClick={() => { navigate(-1) }}>Back</Button>
             </div>
           </Form>
         </Card.Body>
@@ -165,7 +165,7 @@ function BlocksRoute(props) {
     <>
       <Row>
         <Col>
-          <h2 className="block-route-title">Ticket title: {title}</h2>
+          <h2 className="block-route-title text-success p-3">Ticket title: {title}</h2>
         </Col>
       </Row>
       {errorMsg && (
@@ -184,7 +184,7 @@ function BlocksRoute(props) {
         <Col>
           {state === "close" ? (
             <>
-              <Alert variant="danger" className="mb-3">
+              <Alert variant="warning" className="mb-3">
                 {props.user ? "You cannot create a block. The ticket is closed." : "You cannot create a block. You are not logged in and the ticket is already closed."}
               </Alert>
               <Button variant='warning' onClick={() => { navigate(-1) }}>Go back</Button>
