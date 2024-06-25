@@ -33,7 +33,7 @@ function CreationForm(props) {
         // Fetch the estimation when the component mounts
         if (isReviewMode && props.token) {
             API.getEstimation(props.token, title, category).then(res => {
-                setEstimation(res.estimation);
+                setEstimation(DOMPurify.sanitize(res.estimation));
             }).catch(err => {
                 console.error('Failed to fetch estimation:', err);
                 setEstimation(null); // Set estimation to null or handle error case
@@ -51,20 +51,23 @@ function CreationForm(props) {
         else if (!Object.values(Category).includes(category)) {
             setErrorMsg('Improper category was used! Please modify it.');
         } else {
-            const allowedTags = ['b', 'i', 'em', 'br']; // Tags you want to allow
-            const sanitizedText = DOMPurify.sanitize(text, { ALLOWED_TAGS: allowedTags });
-            setText(text);
+            //const allowedTags = ['b', 'i', 'em', 'br']; // Tags you want to allow
+            const sanitizedText = DOMPurify.sanitize(text);//, { ALLOWED_TAGS: allowedTags });
+            const sanitizedTitle = DOMPurify.sanitize(title);
+            setText(sanitizedText);
+            setTitle(sanitizedTitle);
             setIsReviewMode(true);
         }
     }
 
     function handleConfirmSubmit() {
-        const allowedTags = ['b', 'i', 'em', 'br']; // Tags you want to allow
+        /*const allowedTags = ['b', 'i', 'em', 'br']; // Tags you want to allow
         const sanitizedText = DOMPurify.sanitize(text, { ALLOWED_TAGS: allowedTags });
+        const sanitizedTitle = DOMPurify.sanitize(title);*/
         const ticket = {
-            text: sanitizedText,
+            text: DOMPurify.sanitize(text),
             title: DOMPurify.sanitize(title),
-            category: category,
+            category: DOMPurify.sanitize(category),
             date: dayjs(),
             ownerId: parseInt(props.id),
             state: 'open'
@@ -135,7 +138,7 @@ function CreationForm(props) {
                         </Form>
                     ) : (
                         <div>
-                            <p><strong>Title:</strong> {DOMPurify.sanitize(title)}</p>
+                            <p><strong>Title:</strong> <span dangerouslySetInnerHTML={{ __html: title }} /></p>
                             <p><strong>Text:</strong> <span dangerouslySetInnerHTML={{ __html: text }} /></p>
                             <p><strong>Category:</strong> {DOMPurify.sanitize(category)}</p>
                             {estimation !== null && ( // Render only if estimation is available

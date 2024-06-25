@@ -9,7 +9,10 @@ const LocalStrategy = require('passport-local'); // username and password for lo
 const session = require('express-session'); // enable sessions
 const dao = require('./dao');
 const userDao = require('./userDao');
-const sanitizeHtml = require('sanitize-html');
+const createDOMPurify = require('dompurify');
+const { JSDOM } = require('jsdom');
+const window = new JSDOM('').window;
+const DOMPurify = createDOMPurify(window);
 const cors = require('cors');
 const moment = require('moment');
 
@@ -94,7 +97,7 @@ app.get('/api/tickets', (req, res) => {
 });
 
 app.get('/api/ticket/:id',[
-  check("id").isInt()
+  check("id").isInt().toInt()
 ], (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -125,7 +128,7 @@ app.get('/api/blocks/:id' ,[
 
 app.post('/api/tickets', isLoggedIn, [
   check('ownerId').isInt().toInt(),
-  check('title').isLength({min: 1 , max:100}).trim().escape(),
+  check('title').isLength({min: 1 , max:100}),
   check('text').isLength({min: 1}),
   check('state').isIn(['open','close']).trim().escape(),
   check('category').isIn(['payment', 'maintenance', 'inquiry', 'new feature', 'administrative']).trim().escape(),
@@ -145,13 +148,9 @@ app.post('/api/tickets', isLoggedIn, [
   if (resultUser.error)
     res.status(404).json(resultUser);   // questionId does not exist, please insert the question before the answer
   else {
-    const sanitizedText = sanitizeHtml(req.body.text, {
-      allowedTags: ['b', 'i', 'em', 'br'],
-      allowedAttributes: {}
-    });
     const ticket = {
-      title: req.body.title,
-      text: sanitizedText,
+      title: DOMPurify.sanitize(req.body.title),
+      text: DOMPurify.sanitize(req.body.text),
       state: req.body.state,
       category: req.body.category,
       date: req.body.date,
@@ -171,8 +170,9 @@ app.post('/api/tickets', isLoggedIn, [
 //sanitize the text to be formatted also after the storing
 
 app.post('/api/ticket/:id/addBlock', isLoggedIn, [
+  check('id').isInt().toInt(),
   check('text').isLength({min: 1}),
-  check('author').isLength({min: 1, max:20}).trim().escape(),
+  check('author').isLength({min: 1, max:20}),
   check('date').custom((value) => {
     if (!moment(value, 'YYYY-MM-DD HH:mm', true).isValid()) {
         throw new Error('Invalid date format, should be YYYY-MM-DD HH:mm');
@@ -191,15 +191,11 @@ app.post('/api/ticket/:id/addBlock', isLoggedIn, [
   if (resultUser.error && resultTicket.error )
     res.status(404).json(resultUser);   // questionId does not exist, please insert the question before the answer
   else {
-    const sanitizedText = sanitizeHtml(req.body.text, {
-      allowedTags: ['b', 'i', 'em', 'br'],
-      allowedAttributes: {}
-    });
     const block = {
-      text: sanitizedText,
+      text: DOMPurify.sanitize(req.body.text),
       date: req.body.date,
-      author: req.body.author,
-      ticketId: parseInt(req.params.id)
+      author: DOMPurify.sanitize(req.body.author),
+      ticketId: req.params.id
     };
 
     try {
@@ -213,8 +209,8 @@ app.post('/api/ticket/:id/addBlock', isLoggedIn, [
 
 app.put('/api/ticket/:id', isLoggedIn, [
   check('id').isInt().toInt(),
-  check('state').optional().isIn(['open', 'close']),
-  check('category').optional().isIn(['payment', 'maintenance', 'inquiry', 'new feature', 'administrative']),
+  check('state').optional().isIn(['open', 'close']).trim().escape(),
+  check('category').optional().isIn(['payment', 'maintenance', 'inquiry', 'new feature', 'administrative']).trim().escape(),
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -222,7 +218,7 @@ app.put('/api/ticket/:id', isLoggedIn, [
   }
 
   const ticket = req.body;
-  if(ticket.id !== parseInt(req.params.id)){
+  if(parseInt(ticket.id) !== parseInt(req.params.id)){
     return res.status(422).json({error: `Database error; parameters are wrong.`});
   }
   if(ticket.state){
@@ -277,7 +273,7 @@ app.post('/api/sessions', passport.authenticate('local'), (req,res) => {
 
 // DELETE /sessions/current 
 // logout
-app.delete('/api/sessions/current', (req, res) => {
+app.delete('/api/sessions/current', isLoggedIn, (req, res) => {
   req.logout( ()=> { res.end(); } );
 });
 
@@ -297,7 +293,7 @@ app.get('/api/auth-token', isLoggedIn, (req, res) => {
 
   const payloadToSign = { access: authLevel, authId: 1234 };
   const jwtToken = jsonwebtoken.sign(payloadToSign, jwtSecret, {expiresIn: expireTime});
-  res.json({token: jwtToken, authLevel: authLevel});  // authLevel is just for debug. Anyway it is in the JWT payload
+  res.json({token: jwtToken, authLevel: authLevel});
 });
 
 

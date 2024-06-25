@@ -10,13 +10,17 @@ import '../App.css'; // Import App.css for styles
 
 function BlockRow(props) {
   const b = props.block;
-  const allowedTags = ['b', 'i', 'em', 'br']; // Tags you want to allow
-  const sanitizedText = DOMPurify.sanitize(b.text, { ALLOWED_TAGS: allowedTags });
+  //const allowedTags = ['b', 'i', 'em', 'br']; // Tags you want to allow
+  /*const sanitizedText = DOMPurify.sanitize(b.text, {
+    ALLOWED_TAGS: allowedTags,
+    ALLOWED_ATTR: ['style'] // Allow style attributes for inline styling
+  });
+  console.log(sanitizedText);*/
   return (
     <Card className="mb-3">
-      <Card.Header>{b.date.format("YYYY-MM-DD HH:mm")} - {b.author}</Card.Header>
+      <Card.Header>{b.date.format("YYYY-MM-DD HH:mm")} - {DOMPurify.sanitize(b.author)}</Card.Header>
       <Card.Body>
-        <pre dangerouslySetInnerHTML={{__html: sanitizedText}} />
+        <div dangerouslySetInnerHTML={{__html: DOMPurify.sanitize(b.text)}} />
       </Card.Body>
     </Card>
   );
@@ -51,10 +55,8 @@ function BlockForm(props) {
     if (blockText === '') {
       setErrorMsg('Text cannot be empty! Please add some text.');
     } else {
-      const allowedTags = ['b', 'i', 'em', 'br']; // Tags you want to allow
-      const sanitizedText = DOMPurify.sanitize(blockText, { ALLOWED_TAGS: allowedTags });
       const block = {
-        text: sanitizedText,
+        text: DOMPurify.sanitize(blockText),
         date: dayjs(),
         author: props.username 
       };
@@ -124,8 +126,8 @@ function BlocksRoute(props) {
         const ticket = await API.getTicketById(ticketId);
         setState(DOMPurify.sanitize(ticket.state));
         setTitle(DOMPurify.sanitize(ticket.title));
-        const allowedTags = ['b', 'i', 'em', 'br']; // Tags you want to allow
-        const text= DOMPurify.sanitize(ticket.text, { ALLOWED_TAGS: allowedTags });
+        //const allowedTags = ['b', 'i', 'em', 'br']; // Tags you want to allow
+        const text= DOMPurify.sanitize(ticket.text);//, { ALLOWED_TAGS: allowedTags });
         const firstBlock = {id: ticket.id, text:text, date: dayjs(ticket.date), author: ticket.username } 
         const blocks = await API.getAllBlocks(ticketId);
         const sortedBlocks = blocks.sort((a, b) => (a.date).isAfter(b.date) ? 1 : -1)
@@ -144,7 +146,7 @@ function BlocksRoute(props) {
     API.createBlock(block, ticketId)
       .then((id) => {
         const newBlock = { ...block, id: id };
-        setBlocksList(list => [...list, newBlock].sort((a, b) => (a.date.isAfter(b.date) ? 1 : -1)));
+        setBlocksList(list => [...list, newBlock]);//.sort((a, b) => (a.date.isAfter(b.date) ? 1 : -1)));
       })
       .catch((err) => handleError(err));
   }

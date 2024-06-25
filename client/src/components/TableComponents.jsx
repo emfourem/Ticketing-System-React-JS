@@ -25,14 +25,13 @@ function TicketRow(props) {
         // Perform the API call when component mounts or props.token changes
         if (props.admin && props.token && !flag) {
             API.getEstimation(props.token, props.ticket.title, props.ticket.category)
-                .then((res) => { setEstimation(res.estimation); setFlag(true) })
+                .then((res) => { setEstimation(DOMPurify.sanitize(res.estimation)); setFlag(true) })
                 .catch((err) => {
                     props.setErrorMsg(err);
                     setEstimation(null);
                 });
         }
     }, [props.token, flag]);
-
     const t = {
         ...props.ticket,
         id: parseInt(props.ticket.id),
@@ -47,20 +46,21 @@ function TicketRow(props) {
 
     return (
         <tr>
-            <td>{t.title}</td>
+            <td dangerouslySetInnerHTML={{ __html: t.title}} />
             <td>{t.date}</td>
             <td>{t.username}</td>
             <td>{t.category}</td>
             <td>{t.state}</td>
             {
                 !props.admin ? (
+                    props.user ? (
                     <>
                         <td>
                             <Button variant="danger" className="mx-1" onClick={() => props.toggleState(t)} disabled={!props.user || t.state === "close" || t.username !== props.user.username}>
                                 <i className="bi bi-x-square-fill"></i>
                             </Button>
                         </td>
-                    </>
+                    </> ) : null
                 ) : (
                     <>
                         <td>
@@ -120,7 +120,7 @@ function TicketsTable(props) {
                             <th>Change Category</th>
                         </>
                     ) : (
-                        <th>Close</th>
+                        props.user?<th>Close</th>:null
                     )}
                     <th>Expand</th>
                     {isAdmin ? <th>Needed time</th> : null}

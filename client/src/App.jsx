@@ -76,13 +76,15 @@ function TicketsRoute(props) {
       </Row>
       <Row>
         <Col>
-          <TicketsTable listOfTickets={props.ticketsList} toggleState={props.toggleState} user={props.user} token={props.token} errorMsg = {props.setErrorMsg} changeCat={props.changeCat}/>
+          <TicketsTable listOfTickets={props.ticketsList} toggleState={props.toggleState} user={props.user} token={props.token} setErrorMsg = {props.setErrorMsg} changeCat={props.changeCat}/>
         </Col>
       </Row>
       <Row>
+        {props.user?
         <Col className="d-flex justify-content-center">
-            <Button  disabled={props.user? false: true} className="p-3" onClick={()=>navigate('/create')}>New Ticket</Button> 
+            <Button   className="p-3" onClick={()=>navigate('/create')}>New Ticket</Button> 
         </Col>
+        : null}
       </Row>
     </div>
     </>
@@ -160,21 +162,21 @@ function App() {
   }
 
   const refreshToken = () => {
-    API.getToken()
-      .then((obj) => {
-        const decodedToken = jwtDecode(obj.token);
-        const expirationTime = decodedToken.exp * 1000; // Convert to milliseconds
-        const currentTime = Date.now();
-        const duration = expirationTime - currentTime - 2000; // 
-        setToken(obj.token);
-  
-        // Set timeout to refresh token again before it expires
-        setTimeout(() => {
-          refreshToken();
-        }, duration);
-      })
-      .catch(() => {
-      });
+      API.getToken()
+        .then((obj) => {
+          const decodedToken = jwtDecode(obj.token);
+          const expirationTime = decodedToken.exp * 1000; // Convert to milliseconds
+          const currentTime = Date.now();
+          const duration = expirationTime - currentTime - 2000; // 
+          setToken(obj.token);
+    
+          // Set timeout to refresh token again before it expires
+          setTimeout(() => {
+            refreshToken();
+          }, duration);
+        })
+        .catch(() => {
+        });
   };
 
   const loginSuccessful = (user) => {
