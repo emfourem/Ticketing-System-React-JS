@@ -27,13 +27,13 @@ app.use(jwt({
 );
 
 
-app.use( function (err, req, res, next) {
+app.use(function (err, req, res, next) {
   if (err.name === 'UnauthorizedError') {
-    res.status(401).json({ errors: [{  'param': 'Server', 'msg': 'Authorization error', 'path': err.code }] });
+    res.status(401).json({ errors: [{ 'param': 'Server', 'msg': 'Authorization error', 'path': err.code }] });
   } else {
     next();
   }
-} );
+});
 
 
 /*** APIs ***/
@@ -52,7 +52,7 @@ app.post('/api/estimation', (req, res) => {
   const totalLength = countCharsWithoutSpaces(title) + countCharsWithoutSpaces(category);
   let result = (totalLength * 10) + (Math.floor(Math.random() * 240) + 1);
   if (authAccessLevel === 'user') {
-    result = Math.ceil(result/24);
+    result = Math.ceil(result / 24);
   }
   // Return the estimation in the response
   res.json({ estimation: result });
@@ -60,22 +60,24 @@ app.post('/api/estimation', (req, res) => {
 
 app.post('/api/estimations', (req, res) => {
   const authAccessLevel = req.auth.access;
-  const tickets = req.body;
+  if (authAccessLevel === 'admin') {
+    const tickets = req.body;
 
-  // Function to count characters excluding spaces
-  const countCharsWithoutSpaces = (str) => {
-    return str.replace(/\s+/g, '').length;
-  };
+    // Function to count characters excluding spaces
+    const countCharsWithoutSpaces = (str) => {
+      return str.replace(/\s+/g, '').length;
+    };
 
-  // Compute estimation for each ticket
-  const estimations = tickets.map(ticket => {
-    const totalLength = countCharsWithoutSpaces(ticket.title) + countCharsWithoutSpaces(ticket.category);
-    let result = (totalLength * 10) + (Math.floor(Math.random() * 240) + 1);
-    return { id: ticket.id, estimation: result };
-  });
+    // Compute estimation for each ticket
+    const estimations = tickets.map(ticket => {
+      const totalLength = countCharsWithoutSpaces(ticket.title) + countCharsWithoutSpaces(ticket.category);
+      let result = (totalLength * 10) + (Math.floor(Math.random() * 240) + 1);
+      return { id: ticket.id, estimation: result };
+    });
 
-  // Return the estimations in the response
-  res.json(estimations);
+    // Return the estimations in the response
+    res.json(estimations);
+  }
 });
 
 // Activate the server

@@ -21,7 +21,10 @@ async function getAllTickets() {
 
 async function getTicketById(id) {
   // call /api/ticket/:id
-  const response = await fetch(URL + `/ticket/${id}`);
+  const response = await fetch(URL + `/ticket/${id}`, {
+    method: 'GET',
+    credentials: 'include',
+  });
   const ticket = await response.json();
 
   if (response.ok) {
@@ -43,7 +46,10 @@ async function getTicketById(id) {
 
 async function getAllBlocks(id) {
   // call  /api/blocks/:id
-  const response = await fetch(URL + `/blocks/${id}`);
+  const response = await fetch(URL + `/blocks/${id}`, {
+    method: 'GET',
+    credentials: 'include',
+  });
   const blocks = await response.json();
   if (response.ok) {
     return blocks.map((e) => ({ id: e.id, text: e.text, date: dayjs(e.date), author: e.author }))
@@ -216,7 +222,7 @@ async function getEstimation(authToken, title, category) {
 }
 
 async function getEstimations(authToken, tickets) {
-  const url = URL2 + '/estimations';  // Ensure URL2 is defined and valid
+  const url = URL2 + '/estimations';
 
   try {
     const response = await fetch(url, {

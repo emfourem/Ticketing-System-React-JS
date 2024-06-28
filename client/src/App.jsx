@@ -74,7 +74,7 @@ function TicketsRoute(props) {
         </Row>
         <Row>
           <Col>
-            <TicketsTable listOfTickets={props.ticketsList} toggleState={props.toggleState} user={props.user} token={props.token} setErrorMsg={props.setErrorMsg} changeCat={props.changeCat} estimations={props.estimations} setEstimations={props.setEstimations} />
+            <TicketsTable listOfTickets={props.ticketsList} toggleState={props.toggleState} user={props.user} token={props.token} setErrorMsg={props.setErrorMsg} changeCat={props.changeCat} estimations={props.estimations} />
           </Col>
         </Row>
         <Row>
@@ -162,9 +162,6 @@ function App() {
         if(user && user.admin){
           setEstimations(prevEstimations => ({...prevEstimations, [id]:estimation}));
         }
-        /*API.getEstimation(token, ticket.title, ticket.category)
-        .then((res) => setEstimations(prevEstimations => ({...prevEstimations, [id]:res.estimation})))
-        .catch(err=>handleError(err));*/
       })
       .catch((err) => handleError(err));
   }
@@ -250,7 +247,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path='/' element={<Layout user={user} loggedIn={loggedIn} logout={logout} />}>
-          <Route index element={<TicketsRoute ticketsList={tickets} toggleState={toggleState} user={user} errorMsg={errorMsg} setErrorMsg={setErrorMsg} token={token} changeCat={changeCategory} estimations={estimations} setEstimations={setEstimations} />} />
+          <Route index element={<TicketsRoute ticketsList={tickets} toggleState={toggleState} user={user} errorMsg={errorMsg} setErrorMsg={setErrorMsg} token={token} changeCat={changeCategory} estimations={estimations} />} />
           <Route path='/create' element={<CreateRoute createTicket={createTicket} user={user} token={token} />} />
           <Route path='/ticket/:ticketId' element={<BlocksRoute user={user} />} />
           {/* including route here allows login to be rendered as child of the route path, so common elements (header/footer) are shown also in login.

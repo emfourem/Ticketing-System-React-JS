@@ -2,13 +2,14 @@
 
 const express = require('express');
 const morgan = require('morgan'); // logging middleware
-const {check, validationResult} = require('express-validator'); // validation middleware
+const { check, validationResult } = require('express-validator'); // validation middleware
 const validator = require('validator');
+const dayjs = require('dayjs');
 const passport = require('passport'); // auth middleware
 const LocalStrategy = require('passport-local'); // username and password for login
 const session = require('express-session'); // enable sessions
 const dao = require('./dao');
-const userDao = require('./userDao');
+const userDao = require('./dao-user');
 const createDOMPurify = require('dompurify');
 const { JSDOM } = require('jsdom');
 const window = new JSDOM('').window;
@@ -31,18 +32,18 @@ const app = express();
 // set-up the middlewares
 app.use(morgan('dev'));
 app.use(express.json()); // To automatically decode incoming json
-app.use(cors( corsOptions ));
+app.use(cors(corsOptions));
 
 
 /*** Set up Passport ***/
 // set up the "username and password" login strategy
 // by setting a function to verify username and password
 passport.use(new LocalStrategy(
-  function(username, password, done) {
+  function (username, password, done) {
     userDao.getUser(username, password).then((user) => {
       if (!user)
         return done(null, false, { message: 'Incorrect username or password.' });
-        
+
       return done(null, user);
     })
   }
@@ -69,21 +70,20 @@ passport.deserializeUser((id, done) => {
 
 // custom middleware: check if a given request is coming from an authenticated user
 const isLoggedIn = (req, res, next) => {
-  if(req.isAuthenticated())
+  if (req.isAuthenticated())
     return next();
-  
-  return res.status(401).json({ error: 'Not authenticated'});
+
+  return res.status(401).json({ error: 'Not authenticated' });
 }
 
 // set up the session
 app.use(session({
-  // by default, Passport uses a MemoryStore to keep track of the sessions
-  secret: 'aqpo9182uehdb27191203sna',   // change this random string, should be a secret value
+  secret: 'aqpo9182uehdb27191203sna', 
   resave: false,
   saveUninitialized: false
 }));
 
-// then, init passport
+// init passport
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -96,12 +96,12 @@ app.get('/api/tickets', (req, res) => {
     .catch(() => res.status(500).end());
 });
 
-app.get('/api/ticket/:id',[
+app.get('/api/ticket/:id', isLoggedIn, [
   check("id").isInt().toInt()
 ], (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(422).json({errors: errors.array()});
+    return res.status(422).json({ errors: errors.array() });
   }
   dao.retrieveTicket(req.params.id)
     .then(ticket => {
@@ -114,12 +114,12 @@ app.get('/api/ticket/:id',[
     .catch(() => res.status(500).end());
 });
 
-app.get('/api/blocks/:id' ,[
+app.get('/api/blocks/:id', isLoggedIn, [
   check("id").isInt().toInt()
 ], (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(422).json({errors: errors.array()});
+    return res.status(422).json({ errors: errors.array() });
   }
   dao.listBlocks(req.params.id)
     .then(blocks => res.json(blocks))
@@ -128,31 +128,31 @@ app.get('/api/blocks/:id' ,[
 
 app.post('/api/tickets', isLoggedIn, [
   check('ownerId').isInt().toInt(),
-  check('title').isLength({min: 1 , max:100}),
-  check('text').isLength({min: 1}),
-  check('state').isIn(['open','close']).trim().escape(),
-  check('category').isIn(['payment', 'maintenance', 'inquiry', 'new feature', 'administrative']).trim().escape(),
+  check('title').isLength({ min: 1, max: 100 }),
+  check('text').isLength({ min: 1 }),
+  check('state').isIn(['open', 'close']).trim().escape(),
+  check('category').isIn(['payment', 'maintenance', 'inquiry', 'new feature', 'administrative']),
   check('date').custom((value) => {
     if (!moment(value, 'YYYY-MM-DD HH:mm', true).isValid()) {
-        throw new Error('Invalid date format, should be YYYY-MM-DD HH:mm');
+      throw new Error('Invalid date format, should be YYYY-MM-DD HH:mm');
     }
     return true;
-}).trim().escape()
+  }).trim().escape()
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(422).json({errors: errors.array()});
+    return res.status(422).json({ errors: errors.array() });
   }
 
-  const resultUser = await dao.getUser(req.body.ownerId);  // db consistency: make sure user already exists
+  const resultUser = await userDao.getUser(req.body.ownerId);  // db consistency: make sure user already exists
   if (resultUser.error)
-    res.status(404).json(resultUser);   // questionId does not exist, please insert the question before the answer
+    res.status(404).json(resultUser);
   else {
     const ticket = {
       title: DOMPurify.sanitize(req.body.title),
       text: DOMPurify.sanitize(req.body.text),
       state: req.body.state,
-      category: req.body.category,
+      category: DOMPurify.sanitize(req.body.category),
       date: req.body.date,
       ownerId: req.body.ownerId
     };
@@ -167,30 +167,35 @@ app.post('/api/tickets', isLoggedIn, [
 });
 
 
-//sanitize the text to be formatted also after the storing
-
 app.post('/api/ticket/:id/addBlock', isLoggedIn, [
   check('id').isInt().toInt(),
-  check('text').isLength({min: 1}),
-  check('author').isLength({min: 1, max:20}),
+  check('text').isLength({ min: 1 }),
+  check('author').isLength({ min: 1, max: 20 }),
   check('date').custom((value) => {
     if (!moment(value, 'YYYY-MM-DD HH:mm', true).isValid()) {
-        throw new Error('Invalid date format, should be YYYY-MM-DD HH:mm');
+      throw new Error('Invalid date format, should be YYYY-MM-DD HH:mm');
     }
     return true;
-}).trim().escape()
+  }).trim().escape()
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(422).json({errors: errors.array()});
+    return res.status(422).json({ errors: errors.array() });
   }
 
-  const resultUser = await dao.getUsername(req.body.author);  // db consistency: make sure user already exists
-  const resultTicket = await dao.getTicket(parseInt(req.params.id));
-  //from getTicket you can retrieve the date of the ticket and accept the block only if the date is after the creation time
-  if (resultUser.error && resultTicket.error )
-    res.status(404).json(resultUser);   // questionId does not exist, please insert the question before the answer
+  const resultUser = await userDao.getUsername(DOMPurify.sanitize(req.body.author));  // db consistency: make sure user already exists
+  const resultTicket = await dao.getTicket(parseInt(req.params.id)); //db consistency: make sure ticket already exists
+
+  if (resultUser.error && resultTicket.error)
+    res.status(404).json({ error: 'User or ticket not found.'});
   else {
+    //check: is the insertion date of the block after the insertion date of ticket?
+    const ticketDate = dayjs(resultTicket.date, 'YYYY-MM-DD HH:mm');
+    const blockDate = dayjs(req.body.date, 'YYYY-MM-DD HH:mm');
+
+    if (ticketDate.isAfter(blockDate)) {
+      return res.status(422).json({ error: 'Block date must be after ticket creation date.' });
+    }
     const block = {
       text: DOMPurify.sanitize(req.body.text),
       date: req.body.date,
@@ -199,10 +204,10 @@ app.post('/api/ticket/:id/addBlock', isLoggedIn, [
     };
 
     try {
-      const newBlock = await dao.createBlock(block);
-      res.status(201).json(newBlock);
+      const id = await dao.createBlock(block);
+      res.status(201).json(id);
     } catch (err) {
-      res.status(503).json({ error: `Database error during the creation of answer ${ticket.text} by ${resultUser.username}.` });
+      res.status(503).json({ error: `Database error during the creation of the block.` });
     }
   }
 });
@@ -214,26 +219,26 @@ app.put('/api/ticket/:id', isLoggedIn, [
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(422).json({errors: errors.array()});
+    return res.status(422).json({ errors: errors.array() });
   }
 
   const ticket = req.body;
-  if(parseInt(ticket.id) !== parseInt(req.params.id)){
-    return res.status(422).json({error: `Database error; parameters are wrong.`});
+  if (parseInt(ticket.id) !== parseInt(req.params.id)) {
+    return res.status(422).json({ error: `Parameters are wrong.` });
   }
-  if(ticket.state){
+  if (ticket.state) {
     try {
       await dao.updateTicket(ticket, false);
       res.status(200).end();
-    } catch(err) {
-      res.status(503).json({error: `Database error during the update of the state of the ticket.`});
+    } catch (err) {
+      res.status(503).json({ error: `Database error during the update of the state of the ticket.` });
     }
-  }else{
+  } else {
     try {
       await dao.updateTicket(ticket, true);
       res.status(200).end();
-    } catch(err) {
-      res.status(503).json({error: `Database error during the update of the category of the ticket.`});
+    } catch (err) {
+      res.status(503).json({ error: `Database error during the update of the category of the ticket.` });
     }
   }
 });
@@ -242,61 +247,55 @@ app.put('/api/ticket/:id', isLoggedIn, [
 
 // POST /sessions 
 // login
-app.post('/api/sessions', function(req, res, next) {
+app.post('/api/sessions', function (req, res, next) {
   passport.authenticate('local', (err, user, info) => {
     if (err)
       return next(err);
-      if (!user) {
-        // display wrong login messages
-        return res.status(401).json(info);
-      }
-      // success, perform the login
-      req.login(user, (err) => {
-        if (err)
-          return next(err);
-        
-        // req.user contains the authenticated user, we send all the user info back
-        // this is coming from userDao.getUser()
-        return res.json(req.user);
-      });
+    if (!user) {
+      // display wrong login messages
+      return res.status(401).json(info);
+    }
+    // success, perform the login
+    req.login(user, (err) => {
+      if (err)
+        return next(err);
+
+      // req.user contains the authenticated user, we send all the user info back
+      // this is coming from userDao.getUser()
+      return res.json(req.user);
+    });
   })(req, res, next);
-});
-
-// ALTERNATIVE: if we are not interested in sending error messages...
-/*
-app.post('/api/sessions', passport.authenticate('local'), (req,res) => {
-  // If this function gets called, authentication was successful.
-  // `req.user` contains the authenticated user.
-  res.json(req.user);
-});
-*/
-
-// DELETE /sessions/current 
-// logout
-app.delete('/api/sessions/current', isLoggedIn, (req, res) => {
-  req.logout( ()=> { res.end(); } );
 });
 
 // GET /sessions/current
 // check whether the user is logged in or not
-app.get('/api/sessions/current', (req, res) => {  if(req.isAuthenticated()) {
-    res.status(200).json(req.user);}
+app.get('/api/sessions/current', (req, res) => {
+  if (req.isAuthenticated()) {
+    res.status(200).json(req.user);
+  }
   else
-    res.status(401).json({error: 'Unauthenticated user!'});;
+    res.status(401).json({ error: 'Not authenticated' });;
+});
+
+
+// DELETE /sessions/current 
+// logout
+app.delete('/api/sessions/current', isLoggedIn, (req, res) => {
+  req.logout(() => { res.status(200).end(); });
 });
 
 /*** Token ***/
 
 // GET /api/auth-token
 app.get('/api/auth-token', isLoggedIn, (req, res) => {
-  let authLevel = req.user.admin===1?"admin":"user";
+  let authLevel = req.user.admin === 1 ? "admin" : "user";
 
   const payloadToSign = { access: authLevel, authId: 1234 };
-  const jwtToken = jsonwebtoken.sign(payloadToSign, jwtSecret, {expiresIn: expireTime});
-  res.json({token: jwtToken, authLevel: authLevel});
+  const jwtToken = jsonwebtoken.sign(payloadToSign, jwtSecret, { expiresIn: expireTime });
+  res.json({ token: jwtToken, authLevel: authLevel });
 });
 
 
 // Activating the server
 const PORT = 3001;
-app.listen(PORT, ()=>console.log(`Server running on http://localhost:${PORT}/`));
+app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}/`));

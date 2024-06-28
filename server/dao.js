@@ -1,15 +1,16 @@
 'use strict';
-/* Data Access Object (DAO) module for accessing questions and answers */
+/* Data Access Object (DAO) module for accessing the database */
 
 const sqlite = require('sqlite3');
 const dayjs = require('dayjs');
+const userDao = require('./dao-user');
 
 // open the database
 const db = new sqlite.Database('ticketing.db', (err) => {
-    if(err) throw err;
-  });
-  
-// get all questions
+  if (err) throw err;
+});
+
+// get all tickets
 exports.listTickets = () => {
   return new Promise((resolve, reject) => {
     const sql = 'SELECT * FROM tickets';
@@ -19,7 +20,7 @@ exports.listTickets = () => {
         return;
       }
       const tickets = await Promise.all(rows.map(async (t) => {
-        const username = await exports.getUser(t.ownerId);
+        const username = await userDao.getUserById(t.ownerId);
         return {
           id: t.id,
           title: t.title,
@@ -36,6 +37,7 @@ exports.listTickets = () => {
   });
 }
 
+//get a specific ticket
 exports.retrieveTicket = (id) => {
   return new Promise((resolve, reject) => {
     const sql = 'SELECT * FROM tickets WHERE id = ?';
@@ -45,7 +47,7 @@ exports.retrieveTicket = (id) => {
         return;
       }
       if (row) {
-        const user = await exports.getUser(row.ownerId);
+        const user = await userDao.getUserById(row.ownerId);
         resolve({
           id: row.id,
           title: row.title,
@@ -57,13 +59,13 @@ exports.retrieveTicket = (id) => {
           username: user.username
         });
       } else {
-        resolve(null);  // or reject(new Error('Ticket not found'));
+        resolve({error:'Ticket not found.'});
       }
     });
   });
 };
 
-
+//get all the blocks related to a specific ticket
 exports.listBlocks = (id) => {
   return new Promise((resolve, reject) => {
     const sql = 'SELECT * FROM blocks WHERE ticketId=?';
@@ -72,53 +74,17 @@ exports.listBlocks = (id) => {
         reject(err);
         return;
       }
-      const blocks = rows.map( (b) => (
+      const blocks = rows.map((b) => (
         {
           id: b.id,
           author: b.author,
           date: b.date,
-          text: b.text 
+          text: b.text
         }));
       resolve(blocks);
     });
   });
 }
-
-exports.getUser = (id) => {
-  return new Promise((resolve, reject) => {
-    const sql = 'SELECT * FROM users WHERE id=?';
-    db.get(sql, [id], (err, row) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      if (row == undefined) {
-        resolve({error: 'User not found.'});
-      } else {
-        const user = { id : row.id, username: row.username, admin: row.admin  };
-        resolve(user);
-      }
-    });
-  });
-};
-
-exports.getUsername = (username) => {
-  return new Promise((resolve, reject) => {
-    const sql = 'SELECT * FROM users WHERE username=?';
-    db.get(sql, [username], (err, row) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      if (row == undefined) {
-        resolve({error: 'User not found.'});
-      } else {
-        const user = { id : row.id };
-        resolve(user);
-      }
-    });
-  });
-};
 
 exports.getTicket = (id) => {
   return new Promise((resolve, reject) => {
@@ -129,18 +95,18 @@ exports.getTicket = (id) => {
         return;
       }
       if (row == undefined) {
-        resolve({error: 'Ticket not found.'});
+        resolve({ error: 'Ticket not found.' });
       } else {
-        const ticket = 
-          {
-            id: row.id,
-            title: row.title,
-            text: row.text,
-            state: row.state,
-            category: row.category,
-            date: dayjs(row.date),
-            ownerId: row.ownerId,
-          };
+        const ticket =
+        {
+          id: row.id,
+          title: row.title,
+          text: row.text,
+          state: row.state,
+          category: row.category,
+          date: dayjs(row.date),
+          ownerId: row.ownerId,
+        };
         resolve(ticket);
       }
     });
@@ -168,13 +134,13 @@ exports.createBlock = (block) => {
         reject(err);
         return;
       }
-      resolve(exports.getTicket(this.lastID));
+      resolve(this.lastID);
     });
   });
 };
 
 exports.updateTicket = (ticket, flag) => {
-  if(flag){
+  if (flag) {
     return new Promise((resolve, reject) => {
       const sql = 'UPDATE tickets SET category = ? WHERE id = ?';
       db.run(sql, [ticket.category, ticket.id], function (err) {
@@ -185,7 +151,7 @@ exports.updateTicket = (ticket, flag) => {
         resolve(this.changes);
       });
     });
-  }else{
+  } else {
     return new Promise((resolve, reject) => {
       const sql = 'UPDATE tickets SET state = ? WHERE id = ?';
       db.run(sql, [ticket.state, ticket.id], function (err) {
