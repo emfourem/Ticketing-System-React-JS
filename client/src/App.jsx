@@ -1,9 +1,9 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Col, Container, Row, Navbar, Button, Nav, Alert } from 'react-bootstrap';
-import { BrowserRouter, Routes, Route, Outlet, Link, useNavigate, Navigate } from 'react-router-dom'; 
-import {jwtDecode} from 'jwt-decode';
+import { BrowserRouter, Routes, Route, Outlet, Link, useNavigate, Navigate } from 'react-router-dom';
+import { jwtDecode } from 'jwt-decode';
 import { TicketsTable } from './components/TableComponents';
 import { CreateRoute } from './components/CreateRoute';
 import { BlocksRoute } from './components/BlocksRoute';
@@ -57,34 +57,34 @@ function MyFooter(props) {
   );
 }
 
-function TicketsRoute(props) { 
+function TicketsRoute(props) {
   const navigate = useNavigate();
   return (
     <>
-    {props.errorMsg? <Row><Col><Alert className="m-2" 
-      variant="danger" dismissible onClose={()=>props.setErrorMsg('')} >
-      {props.errorMsg}</Alert></Col></Row>: null}
-    <div className="p-4">
-      <Row>
-      </Row>
-      <Row className="mb-4">
-        <Col>
-          <h2 className="text-center text-dark border-bottom pb-2">List of Tickets</h2>
-        </Col>
-      </Row>
-      <Row>
-        <Col>
-          <TicketsTable listOfTickets={props.ticketsList} toggleState={props.toggleState} user={props.user} token={props.token} setErrorMsg = {props.setErrorMsg} changeCat={props.changeCat}/>
-        </Col>
-      </Row>
-      <Row>
-        {props.user?
-        <Col className="d-flex justify-content-center">
-            <Button variant="warning"  className="p-3" onClick={()=>navigate('/create')}>New Ticket</Button> 
-        </Col>
-        : null}
-      </Row>
-    </div>
+      {props.errorMsg ? <Row><Col><Alert className="m-2"
+        variant="danger" dismissible onClose={() => props.setErrorMsg('')} >
+        {props.errorMsg}</Alert></Col></Row> : null}
+      <div className="p-4">
+        <Row>
+        </Row>
+        <Row className="mb-4">
+          <Col>
+            <h2 className="text-center text-dark border-bottom pb-2">List of Tickets</h2>
+          </Col>
+        </Row>
+        <Row>
+          <Col>
+            <TicketsTable listOfTickets={props.ticketsList} toggleState={props.toggleState} user={props.user} token={props.token} setErrorMsg={props.setErrorMsg} changeCat={props.changeCat} estimations={props.estimations} setEstimations={props.setEstimations} />
+          </Col>
+        </Row>
+        <Row>
+          {props.user ?
+            <Col className="d-flex justify-content-center">
+              <Button variant="warning" className="p-3" onClick={() => navigate('/create')}>New Ticket</Button>
+            </Col>
+            : null}
+        </Row>
+      </div>
     </>
   );
 }
@@ -99,11 +99,18 @@ function DefaultRoute(props) {
 }
 
 function App() {
+
   const [tickets, setTickets] = useState([]);
-  const [ errorMsg, setErrorMsg ] = useState('');
-  const [user, setUser ] = useState(undefined);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [user, setUser] = useState(undefined);
   const [loggedIn, setLoggedIn] = useState(false);
   const [token, setToken] = useState(null);
+  const [estimations, setEstimations] = useState({});
+  const [flag, setFlag] = useState(true);
+  {/*useRef is a tool for managing mutable references in functional components.
+  It is designed to be safe for its intended use cases, like storing a DOM element reference,
+  timer IDs, or other mutable objects that do not participate in the React component lifecycle.*/}
+  const timerRef = useRef(null); // Use useRef to store the timer ID
 
   function handleError(err) {
     let errMsg = 'Unkwnown error';
@@ -116,6 +123,7 @@ function App() {
         errMsg = err.error;
       }
     }
+    console.log(err);
     setErrorMsg(errMsg);
   }
 
@@ -132,22 +140,31 @@ function App() {
       .catch(err => handleError(err));
   }
 
-  function changeCategory(id, category) {
-    API.updateCategory(id, category)
+  function changeCategory(ticket, category) {
+    API.updateCategory(ticket.id, category)
       .then(() => {
-        const list = tickets.map(t => t.id === id ? { ...t, category: category } : t);
+        const list = tickets.map(t => t.id === ticket.id ? { ...t, category: category } : t);
         setTickets(list);
+        API.getEstimation(token, ticket.title, ticket.category)
+        .then((res) => setEstimations(prevEstimations => ({...prevEstimations, [ticket.id]:res.estimation})))
+        .catch(err=>handleError(err))
       })
       .catch(err => handleError(err));
   }
-  
 
-  function createTicket(ticket) {
+
+  function createTicket(ticket,estimation) {
     API.createTicket(ticket)
       .then((id) => {
-        const newTicket = Object.assign({}, ticket, {id: id, username:user.username});
+        const newTicket = Object.assign({}, ticket, { id: id, username: user.username });
         const list = [...tickets, newTicket]
         setTickets(list.sort((a, b) => (a.date).isAfter(b.date) ? -1 : 1));
+        if(user && user.admin){
+          setEstimations(prevEstimations => ({...prevEstimations, [id]:estimation}));
+        }
+        /*API.getEstimation(token, ticket.title, ticket.category)
+        .then((res) => setEstimations(prevEstimations => ({...prevEstimations, [id]:res.estimation})))
+        .catch(err=>handleError(err));*/
       })
       .catch((err) => handleError(err));
   }
@@ -156,77 +173,90 @@ function App() {
     await API.logOut();
     setLoggedIn(false);
     setUser(undefined);
+    setEstimations({});
+    setFlag(true);
     setToken(null);
+    if (timerRef.current) {
+      clearTimeout(timerRef.current); // Clear the existing timeout
+      timerRef.current = null; // Reset the ref
+    }
   }
 
-  const refreshToken = () => {
-      API.getToken()
-        .then((obj) => {
-          const decodedToken = jwtDecode(obj.token);
-          const expirationTime = decodedToken.exp * 1000; // Convert to milliseconds
-          const currentTime = Date.now();
-          const duration = expirationTime - currentTime - 2000; // 
-          setToken(obj.token);
-    
-          // Set timeout to refresh token again before it expires
-          setTimeout(() => {
-            refreshToken();
-          }, duration);
-        })
-        .catch(() => {
-        });
-  };
+  function getToken() {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current); // Clear any existing timer
+    }
+    API.getToken()
+      .then((obj) => {
+        const decodedToken = jwtDecode(obj.token);
+        const expirationTime = decodedToken.exp * 1000; // Convert to milliseconds
+        const currentTime = Date.now();
+        const duration = expirationTime - currentTime - 2000;
+        setToken(obj.token);
+        // Set timeout to refresh token 2 seconds before it expires
+        timerRef.current = setTimeout(() => {
+          getToken();
+        }, duration);
+      }).catch((err) => { handleError(err) });
+  }
 
   const loginSuccessful = (user) => {
     setUser(user);
     setLoggedIn(true);
-    API.getToken()
-    .then((obj) => {
-      const decodedToken = jwtDecode(obj.token);
-      const expirationTime = decodedToken.exp * 1000; // Convert to milliseconds
-      const currentTime = Date.now();
-      const duration = expirationTime - currentTime - 2000; //
-
-      setToken(obj.token);
-      // Set timeout to refresh token before it expires
-      setTimeout(() => {
-        refreshToken();
-      }, duration);
-    }).catch(()=>{});
+    getToken();
   }
 
-  useEffect(()=> {
-    const checkAuth = async() => {
+  useEffect(() => {
+    const checkAuth = async () => {
       try {
-        // here you have the user info, if already logged in
-        const user = await API.getUserInfo();
+        const newUser = await API.getUserInfo();
         setLoggedIn(true);
-        setUser(user);
-        refreshToken();
-      } catch(err) {
-      
+        setUser(newUser);
+        getToken();
+      } catch (err) {
+        // Handle authentication error if needed
+      } finally {
+        API.getAllTickets()
+          .then((list) => {
+            setTickets(list.sort((a, b) => (a.date).isAfter(b.date) ? -1 : 1));
+          })
+          .catch((err) => handleError(err));
       }
     };
     checkAuth();
   }, []);
 
   useEffect(() => {
-    API.getAllTickets()
-      .then((list) => {
-        setTickets(list.sort((a, b) => (a.date).isAfter(b.date) ? -1 : 1));
+    if(user && user.admin && token && flag && tickets.length>0){
+      setFlag(false);
+      const adminTickets = tickets.map(ticket => ({
+        id: ticket.id,
+        title: ticket.title,
+        category: ticket.category
+      }));
+      API.getEstimations(token, adminTickets)
+      .then((est) => {
+        const updatedEstimations = { ...estimations };
+        est.forEach(estimation => {
+        updatedEstimations[estimation.id] = estimation.estimation;
+      });
+      setEstimations(updatedEstimations);
       })
-      .catch((err) => handleError(err));
-  }, []);
+      .catch(err => handleError(err));
+    }
+  },[token, flag, tickets, user])
 
   return (
     <BrowserRouter>
       <Routes>
-        <Route path='/' element={<Layout user={user} loggedIn={loggedIn} logout={logout}/>}>
-          <Route index element={ <TicketsRoute ticketsList={tickets} toggleState={toggleState} user={user} errorMsg={errorMsg} setErrorMsg={setErrorMsg} token={token} changeCat={changeCategory} /> } />
-          <Route path='/create' element={ <CreateRoute createTicket={createTicket} user={user} token={token} />} />
-          <Route path='/ticket/:ticketId' element={<BlocksRoute user={user}/>} />
+        <Route path='/' element={<Layout user={user} loggedIn={loggedIn} logout={logout} />}>
+          <Route index element={<TicketsRoute ticketsList={tickets} toggleState={toggleState} user={user} errorMsg={errorMsg} setErrorMsg={setErrorMsg} token={token} changeCat={changeCategory} estimations={estimations} setEstimations={setEstimations} />} />
+          <Route path='/create' element={<CreateRoute createTicket={createTicket} user={user} token={token} />} />
+          <Route path='/ticket/:ticketId' element={<BlocksRoute user={user} />} />
+          {/* including route here allows login to be rendered as child of the route path, so common elements (header/footer) are shown also in login.
+          When a user navigates to /login, they will still see the Layout component's structure, such as the header, footer, or any other common elements defined in Layout.*/}
+          <Route path='/login' element={loggedIn ? <Navigate replace to='/' /> : <LoginForm loginSuccessful={loginSuccessful} />} />
         </Route>
-        <Route path='/login' element={loggedIn? <Navigate replace to='/' />:  <LoginForm loginSuccessful={loginSuccessful} />} />
         <Route path='/*' element={<DefaultRoute />} />
       </Routes>
     </BrowserRouter>
@@ -238,7 +268,7 @@ function Layout(props) {
     <Container fluid className="d-flex flex-column min-vh-100">
       <Row>
         <Col>
-          <MyHeader user={props.user} loggedIn={props.loggedIn} logout={props.logout}/>
+          <MyHeader user={props.user} loggedIn={props.loggedIn} logout={props.logout} />
         </Col>
       </Row>
       <Row className="flex-grow-1">

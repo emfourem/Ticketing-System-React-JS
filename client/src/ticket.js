@@ -1,6 +1,5 @@
 'use strict';
 import dayjs from 'dayjs';
-//const dayjs = require('dayjs');
 
 const State = {
     open: 'open',
@@ -25,8 +24,6 @@ function Ticket(id, state, category, title, text, date, ownerId) {
   this.text = text;
   this.date = date && dayjs(date);
   this.ownerId = ownerId;
-  // saved as dayjs object only if watchDate is truthy
-  //this.watchDate = watchDate && dayjs(watchDate);
 
   this.toString = () => {
     return `Id: ${this.id}, ` +
@@ -36,13 +33,4 @@ function Ticket(id, state, category, title, text, date, ownerId) {
   }
 }
 
-/*
-function main() {
-    const t1=new Ticket( 1,"ciao", "new feature", "Payment required","Where are my money?","2024-06-19 21:00",1);
-    console.log(t1.toString());
-  // Additional instruction to enable debug 
-  debugger;
-}
-main();
-*/
 export {Ticket, Category};

@@ -1,8 +1,9 @@
+import 'bootstrap-icons/font/bootstrap-icons.css';
 import { Form, Button, Alert, Container, Row, Col, Card, InputGroup } from 'react-bootstrap';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../API';
-import 'bootstrap-icons/font/bootstrap-icons.css';
+import DOMPurify from 'dompurify';
 
 function LoginForm(props) {
   const [username, setUsername] = useState('');
@@ -27,17 +28,13 @@ function LoginForm(props) {
   const handleSubmit = (event) => {
     event.preventDefault();
     setErrorMessage('');
-    const credentials = { username, password };
-
-    let valid = true;
-    if (username === '' || password === '') {
-      valid = false;
-    }
-
-    if (valid) {
-      doLogIn(credentials);
-    } else {
+    const user = DOMPurify.sanitize(username, {ALLOWED_TAGS: []});
+    const pwd = DOMPurify.sanitize(password, {ALLOWED_TAGS: []});
+    const credentials = { username:user , password:pwd };
+    if (user === '' || pwd === '') {
       setErrorMessage('Invalid content in form.');
+    } else {
+      doLogIn(credentials);
     }
   };
 
@@ -88,7 +85,7 @@ function LoginForm(props) {
                 </Form.Group>
                 <div className="d-flex justify-content-between">
                   <Button variant="success" type="submit">
-                    Login
+                    Enter
                   </Button>
                   <Button variant="danger" onClick={() => navigate(-1)}>
                     Cancel

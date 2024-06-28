@@ -7,6 +7,8 @@ import { useState, useEffect } from 'react';
 import { Category } from '../ticket';
 import DOMPurify from 'dompurify';
 
+const allowedTags = ['b', 'i', 'br'];
+
 
 function ExpandButton(props) {
     return (
@@ -19,34 +21,21 @@ function ExpandButton(props) {
 }
 
 function TicketRow(props) {
-    const [estimation, setEstimation] = useState(null);
-    const [flag, setFlag] = useState(false);
-    useEffect(() => {
-        // Perform the API call when component mounts or props.token changes
-        if (props.admin && props.token && !flag) {
-            API.getEstimation(props.token, props.ticket.title, props.ticket.category)
-                .then((res) => { setEstimation(DOMPurify.sanitize(res.estimation)); setFlag(true) })
-                .catch((err) => {
-                    props.setErrorMsg(err);
-                    setEstimation(null);
-                });
-        }
-    }, [props.token, flag]);
     const t = {
         ...props.ticket,
         id: parseInt(props.ticket.id),
-        title: DOMPurify.sanitize(props.ticket.title),
-        date: DOMPurify.sanitize(props.ticket.date.format("YYYY-MM-DD HH:mm")),
-        state: DOMPurify.sanitize(props.ticket.state),
-        category: DOMPurify.sanitize(props.ticket.category),
-        username: DOMPurify.sanitize(props.ticket.username)
+        title: DOMPurify.sanitize(props.ticket.title, {ALLOWED_TAGS: []}),
+        date: DOMPurify.sanitize(props.ticket.date.format("YYYY-MM-DD HH:mm"), {ALLOWED_TAGS: []}),
+        state: DOMPurify.sanitize(props.ticket.state, {ALLOWED_TAGS: []}),
+        category: DOMPurify.sanitize(props.ticket.category, {ALLOWED_TAGS: []}),
+        username: DOMPurify.sanitize(props.ticket.username, {ALLOWED_TAGS: []})
     };
 
     const categories = Object.values(Category).filter(cat => cat !== t.category);
 
     return (
         <tr>
-            <td dangerouslySetInnerHTML={{ __html: t.title}} />
+            <td dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(t.title, {ALLOWED_TAGS: []})}} />
             <td>{t.date}</td>
             <td>{t.username}</td>
             <td>{t.category}</td>
@@ -60,6 +49,9 @@ function TicketRow(props) {
                                 <i className="bi bi-x-square-fill"></i>
                             </Button>
                         </td>
+                        <td>
+                        <ExpandButton expandId={t.id}/>
+                    </td>
                     </> ) : null
                 ) : (
                     <>
@@ -80,24 +72,22 @@ function TicketRow(props) {
                             </Dropdown.Toggle>
                             <Dropdown.Menu>
                                 {categories.map((cat, index) => (
-                                    <Dropdown.Item key={index} onClick={() => props.changeCat(t.id, cat)}>
+                                    <Dropdown.Item key={index} onClick={() => props.changeCat(t, cat)}>
                                         {cat}
                                     </Dropdown.Item>
                                 ))}
                             </Dropdown.Menu>
                         </Dropdown>
                     </td>
+                    <td>
+                        <ExpandButton expandId={t.id}/>
+                    </td>
+                    <td>
+                    {props.estimation}
+                    </td>
                     </>
                 )
             }
-            <td>
-                <ExpandButton expandId={t.id}/>
-            </td>
-            {props.admin ? (
-                <td>
-                    {estimation}
-                </td>
-            ) : null}
         </tr>
     );
 }
@@ -118,18 +108,23 @@ function TicketsTable(props) {
                             <th>Close</th>
                             <th>Open</th>
                             <th>Change Category</th>
+                            <th>Expand</th>
+                            <th>Needed time</th>
                         </>
                     ) : (
-                        props.user?<th>Close</th>:null
+                        props.user? (
+                        <>
+                        <th>Close</th>
+                        <th>Expand</th>
+                        </>)
+                        :null
                     )}
-                    <th>Expand</th>
-                    {isAdmin ? <th>Needed time</th> : null}
 
                 </tr>
             </thead>
             <tbody>
                 {props.listOfTickets.map(e => (
-                    <TicketRow key={e.id} ticket={e} toggleState={props.toggleState} admin={isAdmin} user={props.user} token={props.token} setErrorMsg={props.setErrorMsg} changeCat={props.changeCat} />
+                    <TicketRow key={e.id} ticket={e} toggleState={props.toggleState} admin={isAdmin} user={props.user} token={props.token} setErrorMsg={props.setErrorMsg} changeCat={props.changeCat} estimation={props.estimations[e.id]} />
                 ))}
             </tbody>
         </Table>
@@ -137,3 +132,5 @@ function TicketsTable(props) {
 }
 
 export { TicketsTable };
+
+

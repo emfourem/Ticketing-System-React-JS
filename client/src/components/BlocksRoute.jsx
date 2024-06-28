@@ -6,21 +6,15 @@ import DOMPurify from 'dompurify';
 import API from "../API";
 import '../App.css'; // Import App.css for styles
 
-
+const allowedTags = ['b', 'i', 'br'];
 
 function BlockRow(props) {
   const b = props.block;
-  //const allowedTags = ['b', 'i', 'em', 'br']; // Tags you want to allow
-  /*const sanitizedText = DOMPurify.sanitize(b.text, {
-    ALLOWED_TAGS: allowedTags,
-    ALLOWED_ATTR: ['style'] // Allow style attributes for inline styling
-  });
-  console.log(sanitizedText);*/
   return (
     <Card className="mb-3">
-      <Card.Header className="bg-dark">{b.date.format("YYYY-MM-DD HH:mm")} - {DOMPurify.sanitize(b.author)}</Card.Header>
+      <Card.Header className="bg-dark">{DOMPurify.sanitize(b.date.format("YYYY-MM-DD HH:mm"),{ALLOWED_TAGS: []})} - {DOMPurify.sanitize(b.author, {ALLOWED_TAGS: []})}</Card.Header>
       <Card.Body>
-        <div dangerouslySetInnerHTML={{__html: DOMPurify.sanitize(b.text)}} />
+        <div dangerouslySetInnerHTML={{__html: DOMPurify.sanitize(b.text.replace(/\n/g, '<br>'), {ALLOWED_TAGS: allowedTags})}} />
       </Card.Body>
     </Card>
   );
@@ -34,8 +28,8 @@ function Blocks(props) {
           <Card.Body>No blocks are present</Card.Body>
         </Card>
       ) : (
-        props.blocksList.map((t) => (
-          <BlockRow key={t.id} block={t} />
+        props.blocksList.map((t, index) => (
+          <BlockRow key={index} block={t} />
         ))
       )}
     </div>
@@ -56,11 +50,10 @@ function BlockForm(props) {
       setErrorMsg('Text cannot be empty! Please add some text.');
     } else {
       const block = {
-        text: DOMPurify.sanitize(blockText),
+        text: DOMPurify.sanitize(blockText.replace(/\n/g, '<br>').replace(/(<br\s*\/?>\s*){2,}/g, '<br>'), {ALLOWED_TAGS: allowedTags}),
         date: dayjs(),
-        author: props.username 
+        author: DOMPurify.sanitize(props.username, {ALLOWED_TAGS: []}) 
       };
-      
       props.createBlock(block, parseInt(ticketId));
       setBlockText('');
       setErrorMsg('');
@@ -124,10 +117,9 @@ function BlocksRoute(props) {
     const fetchData = async () => {
       try {
         const ticket = await API.getTicketById(ticketId);
-        setState(DOMPurify.sanitize(ticket.state));
-        setTitle(DOMPurify.sanitize(ticket.title));
-        //const allowedTags = ['b', 'i', 'em', 'br']; // Tags you want to allow
-        const text= DOMPurify.sanitize(ticket.text);//, { ALLOWED_TAGS: allowedTags });
+        setState(DOMPurify.sanitize(ticket.state,{ALLOWED_TAGS: []}));
+        setTitle(DOMPurify.sanitize(ticket.title, {ALLOWED_TAGS: []}));
+        const text= DOMPurify.sanitize(ticket.text,{ALLOWED_TAGS: allowedTags}).replace(/\n/g, '<br>');
         const firstBlock = {id: ticket.id, text:text, date: dayjs(ticket.date), author: ticket.username } 
         const blocks = await API.getAllBlocks(ticketId);
         const sortedBlocks = blocks.sort((a, b) => (a.date).isAfter(b.date) ? 1 : -1)
@@ -146,7 +138,7 @@ function BlocksRoute(props) {
     API.createBlock(block, ticketId)
       .then((id) => {
         const newBlock = { ...block, id: id };
-        setBlocksList(list => [...list, newBlock]);//.sort((a, b) => (a.date.isAfter(b.date) ? 1 : -1)));
+        setBlocksList(list => [...list, newBlock]);
       })
       .catch((err) => handleError(err));
   }
