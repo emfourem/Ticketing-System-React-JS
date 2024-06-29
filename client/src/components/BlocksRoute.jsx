@@ -1,12 +1,22 @@
 import { useEffect, useState } from "react";
-import { useLocation, useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { Col, Row, Button, Card, Form, Alert, Spinner } from 'react-bootstrap';
 import dayjs from 'dayjs';
 import DOMPurify from 'dompurify';
 import API from "../API";
-import '../App.css'; // Import App.css for styles
+import '../App.css';
+
+// HTML tags that are allowed in the text.
 
 const allowedTags = ['b', 'i', 'br'];
+
+/**
+ * Function to show information of each block associated to a specific ticket.
+ * 
+ * @param props.key unique key associated to the row
+ * @param props.block the block to be represented in a row
+ * @returns JSX for the BlockRow component
+ */
 
 function BlockRow(props) {
   const b = props.block;
@@ -20,6 +30,13 @@ function BlockRow(props) {
   );
 }
 
+/**
+ * Function to create the block rows.
+ * 
+ * @param props.blocksList list of all the blocks 
+ * @returns JSX for the Blocks component
+ */
+
 function Blocks(props) {
   return (
     <div>
@@ -28,33 +45,67 @@ function Blocks(props) {
           <Card.Body>No blocks are present</Card.Body>
         </Card>
       ) : (
-        props.blocksList.map((t, index) => (
-          <BlockRow key={index} block={t} />
+        props.blocksList.map((b, index) => (
+          <BlockRow key={index} block={b} />
         ))
       )}
     </div>
   );
 }
 
+/**
+ * Function to create and manage the form for submitting new blocks.
+ * 
+ * @param props.username username of the logged in user
+ * @param props.createBlock function to create a new block
+ * @returns JSX for the BlockForm component
+ */
+
 function BlockForm(props) {
+
   const navigate = useNavigate();
+
+  /** The id of the ticket to which new block can be added. */
+
   const { ticketId } = useParams();
+
+  /** The text written by the user. */
+
   const [blockText, setBlockText] = useState('');
+
+  /** The error message to show in case of errors. */
+
   const [errorMsg, setErrorMsg] = useState('');
 
+  /**
+   * Function to handle the submit event of the form to create a new block.
+   * 
+   * @param event event to handle 
+   */
+
   function handleSubmit(event) {
+
+    // To avoid reloading.
+
     event.preventDefault();
 
-    // Form validation
+    // Form validation.
+
     if (blockText === '') {
       setErrorMsg('Text cannot be empty! Please add some text.');
     } else {
+
+      // Data sanitization and creation of the block.
+
       const block = {
         text: DOMPurify.sanitize(blockText.replace(/\n/g, '<br>').replace(/(<br\s*\/?>\s*){2,}/g, '<br>'), {ALLOWED_TAGS: allowedTags}),
         date: dayjs(),
         author: DOMPurify.sanitize(props.username, {ALLOWED_TAGS: []}) 
       };
       props.createBlock(block, parseInt(ticketId));
+
+      // Empty the block text and the error message.
+
       setBlockText('');
       setErrorMsg('');
     }
@@ -90,14 +141,45 @@ function BlockForm(props) {
   );
 }
 
+/**
+ * Function to retrieve, create and show the blocks related to a specific ticket.
+ * 
+ * @param props.user user information as object 
+ * @returns JSX for the BlocksRoute component
+ */
+
 function BlocksRoute(props) {
+
   const navigate = useNavigate();
+
+  /** Id of the ticket to expand. */
+
   const { ticketId } = useParams();
+  
+  /** The list of all the blocks. */
+
   const [blocksList, setBlocksList] = useState([]);
+
+  /** Boolean value to show a spinner or the blocks depending on its value. */
+
   const [loading, setLoading] = useState(true);
+
+  /** The error message to show in case of errors. */
+
   const [errorMsg, setErrorMsg] = useState('');
+
+  /** The state of the specific ticket. */
+
   const [state, setState] = useState('');
+
+  /** The title of the specific ticket. */
   const [title, setTitle] = useState('');
+
+  /**
+   * Function to handle an error.
+   * 
+   * @param err array 
+   */
 
   function handleError(err) {
     let errMsg = 'Unknown error';
@@ -116,23 +198,45 @@ function BlocksRoute(props) {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const ticket = await API.getTicketById(ticketId);
+
+        // The ticket is retrieved.
+
+        const ticket = await API.getTicketById(parseInt(ticketId));
+
+        // Save the state, the title and text of the ticket after sanitization and create the first block.
+
         setState(DOMPurify.sanitize(ticket.state,{ALLOWED_TAGS: []}));
         setTitle(DOMPurify.sanitize(ticket.title, {ALLOWED_TAGS: []}));
-        const text= DOMPurify.sanitize(ticket.text,{ALLOWED_TAGS: allowedTags}).replace(/\n/g, '<br>');
+        const text= DOMPurify.sanitize(ticket.text,{ALLOWED_TAGS: allowedTags}).replace(/\n/g, '<br>').replace(/(<br\s*\/?>\s*){2,}/g, '<br>');
         const firstBlock = {id: ticket.id, text:text, date: dayjs(ticket.date), author: ticket.username } 
-        const blocks = await API.getAllBlocks(ticketId);
-        const sortedBlocks = blocks.sort((a, b) => (a.date).isAfter(b.date) ? 1 : -1)
+
+        // Retrieve all the blocks related to the ticket.
+
+        const blocks = await API.getAllBlocks(parseInt(ticketId));
+
+        const sortedBlocks = blocks.sort((a, b) => (a.date).isAfter(b.date) ? 1 : -1);
         setBlocksList([firstBlock,...sortedBlocks]);
       } catch (err) {
+
         handleError(err);
+
       } finally {
+
+        // When the fetch is finished, blocks can be shown.
+
         setLoading(false);
       }
     };
 
     fetchData();
   }, []);
+
+  /**
+   * Function to create a new block.
+   * 
+   * @param block object containing all the information of the block to create 
+   * @param ticketId integer identifier of the ticket to which the block is associated
+   */
 
   function createBlock(block, ticketId) {
     API.createBlock(block, ticketId)

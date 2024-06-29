@@ -1,0 +1,7 @@
+-Including route into Router allows login to be rendered as child of the route path, so common elements (header/footer) are shown also in login.
+ When a user navigates to /login, they will still see the Layout component's structure, such as the header, footer, or any other common elements defined in Layout.
+-useRef is a tool for managing mutable references in functional components.
+  It is designed to be safe for its intended use cases, like storing a DOM element reference,
+  timer IDs, or other mutable objects that do not participate in the React component lifecycle.
+
+-

@@ -5,17 +5,45 @@ import { useNavigate } from 'react-router-dom';
 import API from '../API';
 import DOMPurify from 'dompurify';
 
+/**
+ * Function to create the login form.
+ * 
+ * @param props.loginSuccessful function to execute when login is done correctly 
+ * @returns JSX for the LoginForm component
+ */
+
 function LoginForm(props) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
 
   const navigate = useNavigate();
+
+  /** Value of the username inserted by the user. */
+
+  const [username, setUsername] = useState('');
+
+  /** Value of the password inserted by the user. */
+
+  const [password, setPassword] = useState('');
+
+  /** The error message to show in case of errors. */
+
+  const [errorMessage, setErrorMessage] = useState('');
+
+  /** Boolean value to reverse the visibility of the password inserted. */
+
+  const [showPassword, setShowPassword] = useState(false);
+
+  /**
+   * Function to perform the login.
+   * 
+   * @param credentials object containing username and password 
+   */
 
   const doLogIn = (credentials) => {
     API.logIn(credentials)
       .then(user => {
+
+        // If an error message is shown, it is deleted.
+
         setErrorMessage('');
         props.loginSuccessful(user);
         navigate(-1);
@@ -25,14 +53,27 @@ function LoginForm(props) {
       });
   };
 
+  /**
+   * Function to handle the click of the submit button.
+   * 
+   * @param event information about the event 
+   */
   const handleSubmit = (event) => {
+
+    // To prevent reloading.
+
     event.preventDefault();
+
+    // If an error message is shown, it is deleted.
+
     setErrorMessage('');
-    const user = DOMPurify.sanitize(username, {ALLOWED_TAGS: []});
-    const pwd = DOMPurify.sanitize(password, {ALLOWED_TAGS: []});
-    const credentials = { username:user , password:pwd };
+
+    const user = DOMPurify.sanitize(username, { ALLOWED_TAGS: [] });
+    const pwd = DOMPurify.sanitize(password, { ALLOWED_TAGS: [] });
+
+    const credentials = { username: user, password: pwd };
     if (user === '' || pwd === '') {
-      setErrorMessage('Invalid content in form.');
+      setErrorMessage('Please fill out the form.');
     } else {
       doLogIn(credentials);
     }

@@ -9,7 +9,18 @@ import dayjs from 'dayjs';
 import DOMPurify from 'dompurify';
 import API from '../API';
 
+// HTML tags that are allowed in the text.
+
 const allowedTags = ['b', 'i', 'br'];
+
+/**
+ * CreateRoute component.
+ * 
+ * @param props.createTicket function to create a ticket
+ * @param props.user user information as object
+ * @param props.token JWT token 
+ * @returns JSX for the CreateRoute component
+ */
 
 function CreateRoute(props) {
     return (
@@ -21,30 +32,89 @@ function CreateRoute(props) {
     );
 }
 
+/**
+ * CreationForm component for creating a new ticket.
+ * 
+ * @param props.createTicket function to create a ticket
+ * @param props.id id of the user
+ * @param props.admin 1 if the user is an admin, 0 otherwise
+ * @param props.token JWT token 
+ * @returns JSX for the CreationForm component
+ */
+
 function CreationForm(props) {
+
     const navigate = useNavigate();
 
+    /** String for the text inserted by the user. */
+
     const [text, setText] = useState('');
+
+    /** String for the title inserte by the user. */
+
     const [title, setTitle] = useState('');
+
+    /** Category selected by the user. */
+
     const [category, setCategory] = useState('Select a category');
+
+    /** The error message to show in case of errors. */
+
     const [errorMsg, setErrorMsg] = useState('');
+
+    /** Flag indicating if the user is in a review mode or not. */
+
     const [isReviewMode, setIsReviewMode] = useState(false);
-    const [estimation, setEstimation] = useState(null); // State to hold the estimation value
+
+    /** The estimated value for the ticket when the ticket is submitted. */
+
+    const [estimation, setEstimation] = useState(null);
+
+    /**
+     * Function to handle an error.
+     * 
+     * @param err array 
+     */
+
+    function handleError(err) {
+        let errMsg = 'Unknown error';
+        if (err.errors) {
+          if (err.errors[0].msg) {
+            errMsg = err.errors[0].msg;
+          }
+        } else {
+          if (err.error) {
+            errMsg = err.error;
+          }
+        }
+        setErrorMsg(errMsg);
+      }
 
     useEffect(() => {
-        // Fetch the estimation when the component mounts
         if (isReviewMode && props.token) {
             API.getEstimation(props.token, DOMPurify.sanitize(title, { ALLOWED_TAGS: [] }), DOMPurify.sanitize(category, { ALLOWED_TAGS: [] }))
                 .then(res => {
                     setEstimation(DOMPurify.sanitize(res.estimation, { ALLOWED_TAGS: [] }));
                 }).catch(err => {
+                    handleError(err);
                     setEstimation(null);
                 });
         }
-    }, [isReviewMode, title, category]);
+    }, [isReviewMode, title, category]); //useEffect performed only when these dependencies are satisfied
+
+    /**
+     * Function to handle the submission of the ticket.
+     * 
+     * @param {*} event 
+     */
 
     function handleSubmit(event) {
+
+        // To prevent reloading.
+
         event.preventDefault();
+        
+        // Check if the input values are correct.
 
         if (text === '')
             setErrorMsg('Text cannot be empty! Please add some text.');
@@ -53,15 +123,30 @@ function CreationForm(props) {
         else if (!Object.values(Category).includes(category)) {
             setErrorMsg('Improper category was used! Please modify it.');
         } else {
+            // Some tags are allowed only in the text.
+
             const sanitizedText = DOMPurify.sanitize(text, { ALLOWED_TAGS: allowedTags });
             const sanitizedTitle = DOMPurify.sanitize(title, { ALLOWED_TAGS: [] });
+
+            // Text in review mode is shown as HTML code, so it is sanitized and saved.
+
             setText(sanitizedText);
+
+            // Title is also sanitized to delete unsafe content inserted by the user.
+
             setTitle(sanitizedTitle);
             setIsReviewMode(true);
         }
     }
 
+    /**
+     * Function to handle the final submission of the ticket.
+     */
+
     function handleConfirmSubmit() {
+
+        // All the data are sanitized.
+
         const ticket = {
             text: DOMPurify.sanitize(text, { ALLOWED_TAGS: allowedTags }).replace(/\n/g, '<br>').replace(/(<br\s*\/?>\s*){2,}/g, '<br>'),
             title: DOMPurify.sanitize(title, { ALLOWED_TAGS: [] }),
@@ -70,13 +155,35 @@ function CreationForm(props) {
             ownerId: parseInt(props.id),
             state: DOMPurify.sanitize('open', { ALLOWED_TAGS: [] }),
         };
+
+        //If an error message is present, it is deleted.
+
         setErrorMsg('');
-        props.createTicket(ticket, estimation);
-        navigate('/');
+
+        if(ticket.text.length > 0 && ticket.title.length > 0){
+            
+            // The estimation computed is passed back.
+
+            props.createTicket(ticket, estimation);
+            navigate('/');
+
+        }else{
+            
+            setIsReviewMode(false);
+            setErrorMsg('Text and title cannot be empty.');
+            
+        }
     }
+
+    /**
+     * Function to handle the case in which the user wants to re-edit the new ticket.
+     */
 
     function handleEdit() {
         setIsReviewMode(false);
+
+        //If an error message is present, it is deleted.
+
         setErrorMsg('');
     }
 
@@ -136,7 +243,7 @@ function CreationForm(props) {
                         </Form>
                     ) : (
                         <div>
-                            <p><strong>Title:</strong> <span dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(title, { ALLOWED_TAGS: [] }) }} /></p>
+                            <p><strong>Title:</strong> {DOMPurify.sanitize(title, { ALLOWED_TAGS: [] })} </p>
                             <p><strong>Text:</strong> <span dangerouslySetInnerHTML={{
                                 __html: DOMPurify.sanitize(text, { ALLOWED_TAGS: allowedTags }).replace(/\n/g, '<br>').replace(/(<br\s*\/?>\s*){2,}/g, '<br>')
                             }} /></p>

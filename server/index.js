@@ -1,21 +1,30 @@
 'use strict';
 
 const express = require('express');
+
 const morgan = require('morgan'); // logging middleware
+
 const { check, validationResult } = require('express-validator'); // validation middleware
-const validator = require('validator');
-const dayjs = require('dayjs');
+
 const passport = require('passport'); // auth middleware
+
 const LocalStrategy = require('passport-local'); // username and password for login
+
 const session = require('express-session'); // enable sessions
-const dao = require('./dao');
-const userDao = require('./dao-user');
+
+const cors = require('cors');
+
+const moment = require('moment');
+
 const createDOMPurify = require('dompurify');
 const { JSDOM } = require('jsdom');
 const window = new JSDOM('').window;
 const DOMPurify = createDOMPurify(window);
-const cors = require('cors');
-const moment = require('moment');
+
+const dayjs = require('dayjs');
+
+const dao = require('./dao');
+const userDao = require('./dao-user');
 
 const jsonwebtoken = require('jsonwebtoken');
 const jwtSecret = '6xvL4xkAAbG49hcXf5GIYSvkDICiUAR6EdR5dLdwW7hMzUjjMUe9t6M5kSAYxsvX';
@@ -65,9 +74,6 @@ passport.deserializeUser((id, done) => {
     });
 });
 
-
-
-
 // custom middleware: check if a given request is coming from an authenticated user
 const isLoggedIn = (req, res, next) => {
   if (req.isAuthenticated())
@@ -86,6 +92,8 @@ app.use(session({
 // init passport
 app.use(passport.initialize());
 app.use(passport.session());
+
+
 
 /*** APIs ***/
 

@@ -18,8 +18,8 @@ const Category = {
 
 function Ticket(id, state, category, title, text, date, ownerId) {
   this.id = id;
-  this.state = Object.values(State).includes(state)? state:State.open;
-  this.category = Object.values(Category).includes(category)? category : null;
+  this.state = Object.values(State).includes(state)? state : State.open;
+  this.category = Object.values(Category).includes(category)? category : Category.newFeature;
   this.title = title;
   this.text = text;
   this.date = date && dayjs(date);

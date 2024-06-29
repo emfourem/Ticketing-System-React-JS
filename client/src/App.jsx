@@ -11,6 +11,14 @@ import { LoginForm } from './components/AuthComponents';
 import API from './API';
 import './App.css';
 
+/**
+ * Header definition.
+ * 
+ * @param props.user user information as object
+ * @param props.logout logout function 
+ * @returns JSX for the MyHeader component
+ */
+
 function MyHeader(props) {
   const { user, logout } = props;
 
@@ -42,8 +50,14 @@ function MyHeader(props) {
   );
 }
 
+/**
+ * Footer definition.
+ * 
+ * @returns JSX for the MyFooter component
+ */
 
-function MyFooter(props) {
+
+function MyFooter() {
   return (
     <footer className="bg-dark text-white py-3 mt-3">
       <Container>
@@ -56,6 +70,19 @@ function MyFooter(props) {
     </footer>
   );
 }
+
+/**
+ * Function to manage the creation of the table containing the tickets.
+ * 
+ * @param props.errorMsg string for message errors
+ * @param props.setErrorMsg function to set an error message
+ * @param props.ticketsList list of tickets
+ * @param props.toggleState function to reverse the state of a ticket
+ * @param props.user user information as object
+ * @param props.changeCat function to change the category of a ticket
+ * @param props.estimations list of objects containing estimations for each ticket
+ * @returns JSX for the TicketRoute component
+ */
 
 function TicketsRoute(props) {
   const navigate = useNavigate();
@@ -74,7 +101,7 @@ function TicketsRoute(props) {
         </Row>
         <Row>
           <Col>
-            <TicketsTable listOfTickets={props.ticketsList} toggleState={props.toggleState} user={props.user} token={props.token} setErrorMsg={props.setErrorMsg} changeCat={props.changeCat} estimations={props.estimations} />
+            <TicketsTable listOfTickets={props.ticketsList} toggleState={props.toggleState} user={props.user} changeCat={props.changeCat} estimations={props.estimations} />
           </Col>
         </Row>
         <Row>
@@ -89,28 +116,73 @@ function TicketsRoute(props) {
   );
 }
 
-function DefaultRoute(props) {
+/**
+ * The route for nonexisting URLs.
+ * 
+ * @returns JSX for the DefaultRoute component
+ */
+
+function DefaultRoute() {
   return (
     <Container fluid>
-      <p className="my-2">No data here: This is not a valid page!</p>
+      <p className="my-2">This is not a valid page!</p>
       <Link to='/'>Please go back to main page</Link>
     </Container>
   );
 }
 
+
 function App() {
 
+  /** The list of tickets. */
+
   const [tickets, setTickets] = useState([]);
+
+  /** The error message to show in case of errors. */
+
   const [errorMsg, setErrorMsg] = useState('');
+
+  /** 
+   * Contains information about logged in user.
+   * It is undefined when no one is logged in.
+   */
+
   const [user, setUser] = useState(undefined);
-  const [loggedIn, setLoggedIn] = useState(false);
+
+  /** The token retrieved and constantly updated from the server. */
+
   const [token, setToken] = useState(null);
+
+  /** 
+   * The list containing the estimations for each ticket.
+   * It will be used only when administrators are logged in.
+   */
+
   const [estimations, setEstimations] = useState({});
+
+  /**
+   * Flag to avoid recomputing estimations if it is not necessary.
+   * When estimations are computed, it is set to false.
+   * When logout is performed, it is set to true to allow new computation
+   * for new user if it will be an administrator.
+   */
+
   const [flag, setFlag] = useState(true);
-  {/*useRef is a tool for managing mutable references in functional components.
-  It is designed to be safe for its intended use cases, like storing a DOM element reference,
-  timer IDs, or other mutable objects that do not participate in the React component lifecycle.*/}
-  const timerRef = useRef(null); // Use useRef to store the timer ID
+
+  /** 
+   * It is a reference to the timer in charge of updating a token.
+   * It will be cleaned when logout is performed.
+   * It manages timers to avoid that timeouts related to other users
+   * can affect the update of the ticket for new users.
+   */
+
+  const timerRef = useRef(null);
+
+  /**
+   * Function to handle possible errors and show related messages.
+   * 
+   * @param err object 
+   */
 
   function handleError(err) {
     let errMsg = 'Unkwnown error';
@@ -123,9 +195,14 @@ function App() {
         errMsg = err.error;
       }
     }
-    console.log(err);
     setErrorMsg(errMsg);
   }
+
+  /**
+   * Function to reverse the state of a ticket.
+   * 
+   * @param ticket object
+   */
 
   function toggleState(ticket) {
     API.updateState(ticket.id, ticket.state === "open" ? "close" : "open")
@@ -140,44 +217,65 @@ function App() {
       .catch(err => handleError(err));
   }
 
+  /**
+   * Function to change category of a specific ticket.
+   * If the change is done, a new estimation only for the ticket is requested.
+   * 
+   * @param  ticket object
+   * @param  category string 
+   */
+
   function changeCategory(ticket, category) {
     API.updateCategory(ticket.id, category)
       .then(() => {
         const list = tickets.map(t => t.id === ticket.id ? { ...t, category: category } : t);
         setTickets(list);
         API.getEstimation(token, ticket.title, ticket.category)
-        .then((res) => setEstimations(prevEstimations => ({...prevEstimations, [ticket.id]:res.estimation})))
-        .catch(err=>handleError(err))
+          .then((res) => setEstimations(prevEstimations => ({ ...prevEstimations, [ticket.id]: res.estimation })))
+          .catch(err => handleError(err))
       })
       .catch(err => handleError(err));
   }
 
+  /**
+   * Function to create a ticket.
+   * 
+   * @param ticket object 
+   * @param estimation integer 
+   */
 
-  function createTicket(ticket,estimation) {
+  function createTicket(ticket, estimation) {
     API.createTicket(ticket)
       .then((id) => {
         const newTicket = Object.assign({}, ticket, { id: id, username: user.username });
         const list = [...tickets, newTicket]
         setTickets(list.sort((a, b) => (a.date).isAfter(b.date) ? -1 : 1));
-        if(user && user.admin){
-          setEstimations(prevEstimations => ({...prevEstimations, [id]:estimation}));
+        if (user && user.admin) {
+          setEstimations(prevEstimations => ({ ...prevEstimations, [id]: estimation }));
         }
       })
       .catch((err) => handleError(err));
   }
 
+  /**
+   * Logout function.
+   */
+
   const logout = async () => {
     await API.logOut();
-    setLoggedIn(false);
     setUser(undefined);
     setEstimations({});
     setFlag(true);
     setToken(null);
     if (timerRef.current) {
-      clearTimeout(timerRef.current); // Clear the existing timeout
-      timerRef.current = null; // Reset the ref
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
     }
   }
+
+  /**
+   * Function to obtain the token and refresh it every 58 seconds.
+   */
 
   function getToken() {
     if (timerRef.current) {
@@ -197,9 +295,14 @@ function App() {
       }).catch((err) => { handleError(err) });
   }
 
+  /**
+   * Function executed when login is performed succesfully.
+   * 
+   * @param user object 
+   */
+
   const loginSuccessful = (user) => {
     setUser(user);
-    setLoggedIn(true);
     getToken();
   }
 
@@ -207,12 +310,12 @@ function App() {
     const checkAuth = async () => {
       try {
         const newUser = await API.getUserInfo();
-        setLoggedIn(true);
         setUser(newUser);
         getToken();
       } catch (err) {
-        // Handle authentication error if needed
+        // Errors here mean that no session is already present, so login is needed.
       } finally {
+        
         API.getAllTickets()
           .then((list) => {
             setTickets(list.sort((a, b) => (a.date).isAfter(b.date) ? -1 : 1));
@@ -220,39 +323,41 @@ function App() {
           .catch((err) => handleError(err));
       }
     };
+    // Check if a session already exists and retrieve all tickets anyway.
     checkAuth();
   }, []);
 
   useEffect(() => {
-    if(user && user.admin && token && flag && tickets.length>0){
+
+    // Compute the estimations if the user logged in is an administrator.
+    if (user && user.admin && token && flag && tickets.length > 0) {
       setFlag(false);
+      // Create a new list with the needed information.
       const adminTickets = tickets.map(ticket => ({
         id: ticket.id,
         title: ticket.title,
         category: ticket.category
       }));
       API.getEstimations(token, adminTickets)
-      .then((est) => {
-        const updatedEstimations = { ...estimations };
-        est.forEach(estimation => {
-        updatedEstimations[estimation.id] = estimation.estimation;
-      });
-      setEstimations(updatedEstimations);
-      })
-      .catch(err => handleError(err));
+        .then((est) => {
+          const updatedEstimations = { ...estimations };
+          est.forEach(estimation => {
+            updatedEstimations[estimation.id] = estimation.estimation;
+          });
+          setEstimations(updatedEstimations);
+        })
+        .catch(err => handleError(err));
     }
-  },[token, flag, tickets, user])
+  }, [token, flag, tickets, user]) //all these dependencies are needed for executing the function in the correct moment
 
   return (
     <BrowserRouter>
       <Routes>
-        <Route path='/' element={<Layout user={user} loggedIn={loggedIn} logout={logout} />}>
-          <Route index element={<TicketsRoute ticketsList={tickets} toggleState={toggleState} user={user} errorMsg={errorMsg} setErrorMsg={setErrorMsg} token={token} changeCat={changeCategory} estimations={estimations} />} />
+        <Route path='/' element={<Layout user={user} logout={logout} />}>
+          <Route index element={<TicketsRoute ticketsList={tickets} toggleState={toggleState} user={user} errorMsg={errorMsg} setErrorMsg={setErrorMsg} changeCat={changeCategory} estimations={estimations} />} />
           <Route path='/create' element={<CreateRoute createTicket={createTicket} user={user} token={token} />} />
           <Route path='/ticket/:ticketId' element={<BlocksRoute user={user} />} />
-          {/* including route here allows login to be rendered as child of the route path, so common elements (header/footer) are shown also in login.
-          When a user navigates to /login, they will still see the Layout component's structure, such as the header, footer, or any other common elements defined in Layout.*/}
-          <Route path='/login' element={loggedIn ? <Navigate replace to='/' /> : <LoginForm loginSuccessful={loginSuccessful} />} />
+          <Route path='/login' element={user ? <Navigate replace to='/' /> : <LoginForm loginSuccessful={loginSuccessful} />} />
         </Route>
         <Route path='/*' element={<DefaultRoute />} />
       </Routes>
@@ -260,12 +365,20 @@ function App() {
   );
 }
 
+/**
+ * It defines the main structure of all the routes.
+ * 
+ * @param props.user user information as object
+ * @param props.logout logout function
+ * @returns JSX for the Layout component
+ */
+
 function Layout(props) {
   return (
     <Container fluid className="d-flex flex-column min-vh-100">
       <Row>
         <Col>
-          <MyHeader user={props.user} loggedIn={props.loggedIn} logout={props.logout} />
+          <MyHeader user={props.user} logout={props.logout} />
         </Col>
       </Row>
       <Row className="flex-grow-1">

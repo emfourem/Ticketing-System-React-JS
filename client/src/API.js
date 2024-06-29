@@ -8,19 +8,32 @@ const URL = 'http://localhost:3001/api';
 
 const URL2 = 'http://localhost:3002/api';
 
+/**
+ * Function to retrieve all the tickets.
+ * 
+ * @returns an object containing the tickets [{ id: t.id, text: "text", title: "title", date: {..}, category: "administrative", state: "open", ownerId: 2, username: "user" }, ...]
+ * @throws will throw an error if the response is not ok.
+ */
+
 async function getAllTickets() {
-  // call  /api/tickets
   const response = await fetch(URL + '/tickets');
   const tickets = await response.json();
   if (response.ok) {
-    return tickets.map((e) => ({ id: e.id, text: e.text, title: e.title, date: dayjs(e.date), category: e.category, state: e.state, ownerId: e.ownerId, username: e.username }))
+    return tickets.map((t) => ({ id: t.id, text: t.text, title: t.title, date: dayjs(t.date), category: t.category, state: t.state, ownerId: t.ownerId, username: t.username }))
   } else {
-    throw questions;  // expected to be a json object (coming from the server) with info about the error
+    throw tickets;
   }
 }
 
+/**
+ * Function to retrieve a ticket given its id.
+ * 
+ * @param id unique identifier of the ticket
+ * @returns an object containing the ticket { id: t.id, text: "text", title: "title", date: {..}, category: "administrative", state: "open", ownerId: 2, username: "user" }
+ * @throws will throw an error if the response is not ok
+ */
+
 async function getTicketById(id) {
-  // call /api/ticket/:id
   const response = await fetch(URL + `/ticket/${id}`, {
     method: 'GET',
     credentials: 'include',
@@ -28,7 +41,6 @@ async function getTicketById(id) {
   const ticket = await response.json();
 
   if (response.ok) {
-    // Directly returning the ticket object after converting the date to dayjs
     return {
       id: ticket.id,
       text: ticket.text,
@@ -40,26 +52,38 @@ async function getTicketById(id) {
       username: ticket.username
     };
   } else {
-    throw ticket;  // expected to be a json object (coming from the server) with info about the errors
+    throw ticket;
   }
 }
 
+/**
+ * Function to retrieve all the blocks associated to a specific id.
+ * 
+ * @param id unique identifier of the ticket
+ * @returns an object with the blocks like [{id: 1, text: "text", date: {..}, author: "user"},...] or the information about the errors
+ */
+
 async function getAllBlocks(id) {
-  // call  /api/blocks/:id
   const response = await fetch(URL + `/blocks/${id}`, {
     method: 'GET',
     credentials: 'include',
   });
   const blocks = await response.json();
   if (response.ok) {
-    return blocks.map((e) => ({ id: e.id, text: e.text, date: dayjs(e.date), author: e.author }))
+    return blocks.map((b) => ({ id: b.id, text: b.text, date: dayjs(b.date), author: b.author }))
   } else {
-    throw blocks;  // expected to be a json object (coming from the server) with info about the error
+    throw blocks;
   }
 }
 
+/**
+ * Function to create a ticket.
+ * 
+ * @param ticket an object representing a ticket
+ * @returns {Promise<Object>} a promise that resolves to the new unique ticket ID, or rejects with an error message
+ */
+
 function createTicket(ticket) {
-  // call  POST /api/tickets
   return new Promise((resolve, reject) => {
     fetch(URL + `/tickets`, {
       method: 'POST',
@@ -74,17 +98,23 @@ function createTicket(ticket) {
           .then((id) => resolve(id))
           .catch(() => { reject({ error: "Cannot parse server response." }) });
       } else {
-        // analyze the cause of error
         response.json()
-          .then((message) => { reject(message); }) // error message in the response body
+          .then((message) => { reject(message); })
           .catch(() => { reject({ error: "Cannot parse server response." }) });
       }
     }).catch(() => { reject({ error: "Cannot communicate with the server." }) });
   });
 }
 
+/**
+ * Function to create a block.
+ * 
+ * @param block an object representing a block
+ * @param id unique identifier of the ticket
+ * @returns a promise that resolves to the unique ID assigned to the new ticket, or rejects with an error message
+ */
+
 function createBlock(block, id) {
-  // call  POST /api/ticket/:ticketId/addBlock
   return new Promise((resolve, reject) => {
     fetch(URL + `/ticket/${id}/addBlock`, {
       method: 'POST',
@@ -99,17 +129,23 @@ function createBlock(block, id) {
           .then((id) => resolve(id))
           .catch(() => { reject({ error: "Cannot parse server response." }) });
       } else {
-        // analyze the cause of error
         response.json()
-          .then((message) => { reject(message); }) // error message in the response body
+          .then((message) => { reject(message); })
           .catch(() => { reject({ error: "Cannot parse server response." }) });
       }
     }).catch(() => { reject({ error: "Cannot communicate with the server." }) });
   });
 }
 
+/**
+ * Function to update the state of a specific ticket.
+ * 
+ * @param id unique identifier of the ticket to update
+ * @param state the new state
+ * @returns {Promise<Object>} a promise that resolves to a null value, or rejects with an error message
+ */
+
 function updateState(id, state) {
-  // call  PUT /api/ticket/:id
   return new Promise((resolve, reject) => {
     fetch(URL + `/ticket/${id}`, {
       method: 'PUT',
@@ -122,17 +158,23 @@ function updateState(id, state) {
       if (response.ok) {
         resolve(null);
       } else {
-        // analyze the cause of error
         response.json()
-          .then((message) => { reject(message); }) // error message in the response body
+          .then((message) => { reject(message); })
           .catch(() => { reject({ error: "Cannot parse server response." }) });
       }
     }).catch(() => { reject({ error: "Cannot communicate with the server." }) });
   });
 }
 
+/**
+ * Function to update the category of a specific ticket.
+ * 
+ * @param id unique identifier of the ticket to update
+ * @param category the new category
+ * @returns {Promise<Object>} a promise that resolves to a null value, or rejects with an error message
+ */
+
 function updateCategory(id, category) {
-  // call  PUT /api/ticket/:id
   return new Promise((resolve, reject) => {
     fetch(URL + `/ticket/${id}`, {
       method: 'PUT',
@@ -145,14 +187,23 @@ function updateCategory(id, category) {
       if (response.ok) {
         resolve(null);
       } else {
-        // analyze the cause of error
         response.json()
-          .then((message) => { reject(message); }) // error message in the response body
+          .then((message) => { reject(message); })
           .catch(() => { reject({ error: "Cannot parse server response." }) });
       }
     }).catch(() => { reject({ error: "Cannot communicate with the server." }) });
   });
 }
+
+/**
+ * Function to log in a user with given credentials.
+ * 
+ * @param credentials an object containing the user's login credentials
+ * @param credentials.username the username of the user
+ * @param credentials.password the password of the user
+ * @returns an object containing user information {username: "user", "id":1, admin:0}
+ * @throws will throw an error message if the login attempt is unsuccessful
+ */
 
 async function logIn(credentials) {
   let response = await fetch(URL + '/sessions', {
@@ -172,12 +223,25 @@ async function logIn(credentials) {
   }
 }
 
+/**
+ * Function to log out the current user.
+ * 
+ * @returns
+ */
+
 async function logOut() {
   await fetch(URL + '/sessions/current', {
     method: 'DELETE',
     credentials: 'include'
   });
 }
+
+/**
+ * Function to retrieve information about the current logged-in user.
+ * 
+ * @returns an object containing user information {username: "user", "id":1, admin:0}
+ * @throws will throw an error object in case of errors
+ */
 
 async function getUserInfo() {
   const response = await fetch(URL + '/sessions/current', {
@@ -187,9 +251,16 @@ async function getUserInfo() {
   if (response.ok) {
     return userInfo;
   } else {
-    throw userInfo;  // an object with the error coming from the server
+    throw userInfo;
   }
 }
+
+/**
+ * Function to retrieve an authorization token for the current user.
+ * 
+ * @returns an object containing the token and authorization level {token: "...", authLevel: "admin"}
+ * @throws aill throw an error if there is an error
+ */
 
 async function getToken() {
   const response = await fetch(URL + '/auth-token', {
@@ -199,12 +270,21 @@ async function getToken() {
   if (response.ok) {
     return token;
   } else {
-    throw token;  // an object with the error coming from the server
+    throw token;
   }
 }
 
+/**
+ * Function to get the estimation for a specific ticket.
+ * 
+ * @param authToken a JWT token
+ * @param title the title of the ticket
+ * @param category the category of the ticket
+ * @returns an object containing the estimation { estimation: 120}
+ * @throws will throw an error object in case of errors
+ */
+
 async function getEstimation(authToken, title, category) {
-  // call POST api/estimation
   const response = await fetch(URL2 + '/estimation', {
     method: 'POST',
     headers: {
@@ -213,17 +293,25 @@ async function getEstimation(authToken, title, category) {
     },
     body: JSON.stringify({ title: title, category: category }),
   });
-  const info = await response.json();
+  const estimation = await response.json();
   if (response.ok) {
-    return info;
+    return estimation;
   } else {
-    throw info;  // expected to be a json object (coming from the server) with info about the error
+    throw estimation;
   }
 }
 
+/**
+ * Function to get the estimations for all the tickets.
+ * 
+ * @param authToken a JWT token
+ * @param tickets a list of tickets
+ * @returns an object containing the estimations [{ id:1, estimation: 230}, ...]
+ * @throws will throw an error object in case of errors
+ */
+
 async function getEstimations(authToken, tickets) {
   const url = URL2 + '/estimations';
-
   try {
     const response = await fetch(url, {
       method: 'POST',
@@ -234,12 +322,12 @@ async function getEstimations(authToken, tickets) {
       body: JSON.stringify(tickets),
     });
 
-    const info = await response.json();
+    const estimations = await response.json();
 
     if (response.ok) {
-      return info;
+      return estimations;
     } else {
-      throw info;
+      throw estimations;
     }
   } catch (err) {
     throw err;
@@ -249,4 +337,5 @@ async function getEstimations(authToken, tickets) {
 
 
 const API = { getAllTickets, createTicket, getAllBlocks, createBlock, updateState, getTicketById, logIn, logOut, getUserInfo, getToken, getEstimation, updateCategory, getEstimations };
+
 export default API;
