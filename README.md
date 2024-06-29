@@ -28,7 +28,8 @@
             "text": "Where is the office?",
             "state": "open",
             "category": "maintenance",
-            "date": {...,'$d': 2023-12-18T15:36:00.000Z,...}, "ownerId": 2, 
+            "date": {...,'$d': 2023-12-18T15:36:00.000Z,...},
+            "ownerId": 2, 
             "username": "bob" 
         },
          ... 
@@ -53,7 +54,8 @@
             "text": "Where are my money?",
             "state": "open",
             "category": "payment",
-            "date": {...,'$d': 2024-06-19T21:00:00.000Z,...}, "ownerId": 1, 
+            "date": {...,'$d': 2024-06-19T21:00:00.000Z,...},
+            "ownerId": 1, 
             "username": "alice" 
         }
     ]
@@ -77,7 +79,8 @@
             "text": "Where are my money?",
             "state": "open",
             "category": "payment",
-            "date": {...,'$d': 2024-06-19T21:00:00.000Z,...}, "ownerId": 1, 
+            "date": {...,'$d': 2024-06-19T21:00:00.000Z,...},
+            "ownerId": 1, 
             "username": "alice"
         },
         ...
@@ -98,7 +101,8 @@
             "text": "This is a new ticket.",
             "state": "open",
             "category": "administrative",
-            "date": {...,'$d': 2023-11-19T17:28:00.000Z,...}, "ownerId": 4
+            "date": {...,'$d': 2023-11-19T17:28:00.000Z,...},
+            "ownerId": 4
         }
     ]
     ```
@@ -305,26 +309,41 @@ There is a foreign key, ticketId, that references the id in the tickets table.
 
 ## Main React Components
 
-
+* `App` (in `App.jsx`): The app renders a main layout with a header, footer, and dynamic content in between based on routes. It uses various state hooks to manage user authentication, ticket data, and estimations, updating the UI accordingly with routes for listing tickets, creating tickets, viewing ticket details, creating blocks and user login.
+* `Tickets Route` (in `App.jsx`): it is the main component of the home page for generic users and shows the list of the tickets. It shows additional functionality based on the role of logged in users.
+* `Tickets Table` (in `TableComponents.jsx`): it is the table that contains the information about the tickets. It shows for each user, authenticated or not, the title, the date, the state, the category and the owner of the ticket.
+* `Ticket Row` (in `TableComponents.jsx`): it renders the information safely for each ticket and allows users, based on their authentication, to edit it. It allows logged in users to expand a single ticket for viewing associated blocks. Logged in user can also close a ticket for which they are owner. Logged in administrator can, in addition, change the category and the state of a ticket, and see an estimation closing time for each ticket.
+* `BlocksRoute` (in `BlocksRoute.jsx`): it fetches blocks related to a specific ticket from the database in order to pass them to the Blocks component and allows an user to create a block only if it is logged in and the state of the ticket is "open". It manages the states and retrieve the id of the ticket for which blocks are requested from the URL.
+* `Blocks` (in `BlocksRoute.jsx`): it shows a message if a tickes has not got associated blocks or it simply pass each ticket to the Block Row component.
+* `Block Row` (in `BlocksRoute.jsx`): it shows the date, the author and the text of each block related to a specific ticket. No operations are allowed on the blocks. It is responsible for safely showing the information.
+* `Block Form` (in `BlocksRoute.jsx`): the form that only logged in users or administrators can use for creating and submitting a new block associated to the specific ticket. It is responsible for sanitizing input data before send them to the database and for adding date and author information to the new block.
+* `Creation Form` (in `CreateRoute.jsx`): the form that only logged in users or administrators can use for submitting a new ticket. When all the information needed are inserted, they are asked to confirm them and submit the ticket, or to re-edit them. It is responsible for sanitizing input data submitted by the user before sending them to the server and for adding ownerId, date and state to the new ticket.
+* `Login Form` (in `AuthComponents.jsx`): the login form that users can use to login into the app. This is responsible for the client-side validation of the login credentials.
 
 
 ## Screenshots
+
 ### Tickets list seen by the administrator
+
 ![Tickets list seen by the administrator](./img/ticketsList.png)
+
 ### Ticket expanded
+
 ![Ticket expanded](./img/singleTicket.png)
+
 ### Form for creating new ticket
+
 ![Form for creating new ticket](./img/createForm.png)
 
 ## Users Credentials
 
 ### Administrators
 
-* username: michele, password: password 
-* username: alice, password: password
+* username: michele, password: micheleWA 
+* username: alice, password: aliceWA
 
 ### Users
 
-* username: bob, password: password
-* username: carl, password: password
-* username: dave, password: password
+* username: bob, password: bobWA
+* username: carl, password: carlWA
+* username: dave, password: daveWA
