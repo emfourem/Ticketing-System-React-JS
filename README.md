@@ -309,11 +309,11 @@ There is a foreign key, ticketId, that references the id in the tickets table.
 
 
 ## Screenshots
-Tickets list seen by the administrator:
+### Tickets list seen by the administrator
 ![Tickets list seen by the administrator](./img/ticketsList.png)
-Ticket expanded:
+### Ticket expanded
 ![Ticket expanded](./img/singleTicket.png)
-Form for creating new ticket:
+### Form for creating new ticket
 ![Form for creating new ticket](./img/createForm.png)
 
 ## Users Credentials
