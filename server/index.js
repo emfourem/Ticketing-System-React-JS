@@ -6,6 +6,8 @@ const morgan = require('morgan'); // logging middleware
 
 const { check, validationResult } = require('express-validator'); // validation middleware
 
+const validator = require('validator');
+
 const passport = require('passport'); // auth middleware
 
 const LocalStrategy = require('passport-local'); // username and password for login
@@ -45,16 +47,29 @@ app.use(cors(corsOptions));
 
 
 /*** Set up Passport ***/
+
 // set up the "username and password" login strategy
 // by setting a function to verify username and password
+
 passport.use(new LocalStrategy(
   function (username, password, done) {
+    // Sanitize inputs
+    username = validator.trim(username);
+    username = validator.escape(username);
+    password = validator.trim(password);
+
+    // Validate inputs
+    if (!validator.isLength(username, { min: 3, max: 30 }) || !validator.isLength(password, { min: 6 }) ) {
+      return done(null, false, { message: 'Incorrect username or password.' });
+    }
+
     userDao.getUser(username, password).then((user) => {
-      if (!user)
+      if (!user) {
         return done(null, false, { message: 'Incorrect username or password.' });
+      }
 
       return done(null, user);
-    })
+    }).catch(err => done(err));
   }
 ));
 
@@ -66,7 +81,7 @@ passport.serializeUser((user, done) => {
 
 // starting from the data in the session, we extract the current (logged-in) user
 passport.deserializeUser((id, done) => {
-  userDao.getUserById(id)
+  userDao.getUserById(parseInt(id))
     .then(user => {
       done(null, user); // this will be available in req.user
     }).catch(err => {
@@ -97,12 +112,21 @@ app.use(passport.session());
 
 /*** APIs ***/
 
-// GET /api/questions
+/**
+ * Get all the tickets.
+ * Authentication is not needed.
+ */
+
 app.get('/api/tickets', (req, res) => {
   dao.listTickets()
     .then(tickets => res.json(tickets))
     .catch(() => res.status(500).end());
 });
+
+/**
+ * Get a ticket given its id.
+ * Authentication needed.
+ */
 
 app.get('/api/ticket/:id', isLoggedIn, [
   check("id").isInt().toInt()
@@ -111,7 +135,7 @@ app.get('/api/ticket/:id', isLoggedIn, [
   if (!errors.isEmpty()) {
     return res.status(422).json({ errors: errors.array() });
   }
-  dao.retrieveTicket(req.params.id)
+  dao.getTicket(req.params.id)
     .then(ticket => {
       if (ticket !== null) {
         res.json(ticket);
@@ -121,6 +145,11 @@ app.get('/api/ticket/:id', isLoggedIn, [
     })
     .catch(() => res.status(500).end());
 });
+
+/**
+ * Get the blocks related to a ticket identified by the id.
+ * Authentication needed.
+ */
 
 app.get('/api/blocks/:id', isLoggedIn, [
   check("id").isInt().toInt()
@@ -133,6 +162,11 @@ app.get('/api/blocks/:id', isLoggedIn, [
     .then(blocks => res.json(blocks))
     .catch(() => res.status(500).end());
 });
+
+/**
+ * Create a new ticket.
+ * Authentication needed.
+ */
 
 app.post('/api/tickets', isLoggedIn, [
   check('ownerId').isInt().toInt(),
@@ -174,6 +208,10 @@ app.post('/api/tickets', isLoggedIn, [
   }
 });
 
+/**
+ * Create a block related to a specfic ticket identified by its id.
+ * Authentication needed.
+ */
 
 app.post('/api/ticket/:id/addBlock', isLoggedIn, [
   check('id').isInt().toInt(),
@@ -192,12 +230,12 @@ app.post('/api/ticket/:id/addBlock', isLoggedIn, [
   }
 
   const resultUser = await userDao.getUsername(DOMPurify.sanitize(req.body.author));  // db consistency: make sure user already exists
-  const resultTicket = await dao.getTicket(parseInt(req.params.id)); //db consistency: make sure ticket already exists
+  const resultTicket = await dao.getTicket(req.params.id); //db consistency: make sure ticket already exists
 
   if (resultUser.error && resultTicket.error)
     res.status(404).json({ error: 'User or ticket not found.'});
   else {
-    //check: is the insertion date of the block after the insertion date of ticket?
+    // Check: is the insertion date of the block after the insertion date of ticket?
     const ticketDate = dayjs(resultTicket.date, 'YYYY-MM-DD HH:mm');
     const blockDate = dayjs(req.body.date, 'YYYY-MM-DD HH:mm');
 
@@ -220,6 +258,10 @@ app.post('/api/ticket/:id/addBlock', isLoggedIn, [
   }
 });
 
+/**
+ * Update the state or the category of a ticket identified by its id.
+ */
+
 app.put('/api/ticket/:id', isLoggedIn, [
   check('id').isInt().toInt(),
   check('state').optional().isIn(['open', 'close']).trim().escape(),
@@ -231,7 +273,7 @@ app.put('/api/ticket/:id', isLoggedIn, [
   }
 
   const ticket = req.body;
-  if (parseInt(ticket.id) !== parseInt(req.params.id)) {
+  if (parseInt(ticket.id) !== req.params.id) {
     return res.status(422).json({ error: `Parameters are wrong.` });
   }
   if (ticket.state) {
@@ -294,7 +336,10 @@ app.delete('/api/sessions/current', isLoggedIn, (req, res) => {
 
 /*** Token ***/
 
-// GET /api/auth-token
+/**
+ * Get the token.
+ * Authentication needed.
+ */
 app.get('/api/auth-token', isLoggedIn, (req, res) => {
   let authLevel = req.user.admin === 1 ? "admin" : "user";
 

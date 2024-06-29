@@ -1,10 +1,14 @@
 'use strict';
 
 const express = require('express');
+
 const morgan = require('morgan'); // logging middleware
+
 const cors = require('cors');
+
 const { expressjwt: jwt } = require('express-jwt');
 const jwtSecret = '6xvL4xkAAbG49hcXf5GIYSvkDICiUAR6EdR5dLdwW7hMzUjjMUe9t6M5kSAYxsvX';
+
 // init express
 const app = express();
 const port = 3002;
@@ -38,44 +42,53 @@ app.use(function (err, req, res, next) {
 
 /*** APIs ***/
 
-// POST /api/estimation
+/**
+ * Function to obtain the estimation for a given ticket.
+ * The estimation is expressed in hours for administrators and in days for users.
+ */
+
 app.post('/api/estimation', (req, res) => {
   const authAccessLevel = req.auth.access;
   const title = req.body.title || '';
   const category = req.body.category || '';
 
-  // Function to count characters excluding spaces
-  const countCharsWithoutSpaces = (str) => {
+  // Function to count characters excluding spaces.
+  const countChars = (str) => {
     return str.replace(/\s+/g, '').length;
   };
 
-  const totalLength = countCharsWithoutSpaces(title) + countCharsWithoutSpaces(category);
+  // Compute the estimation for the ticket.
+  const totalLength = countChars(title) + countChars(category);
   let result = (totalLength * 10) + (Math.floor(Math.random() * 240) + 1);
   if (authAccessLevel === 'user') {
     result = Math.ceil(result / 24);
   }
-  // Return the estimation in the response
+
   res.json({ estimation: result });
 });
+
+/**
+ * Function to obtain the estimation for each ticket in a list of tickets.
+ * The estimation is expressed in hours because only administrators can use this function.
+ */
 
 app.post('/api/estimations', (req, res) => {
   const authAccessLevel = req.auth.access;
   if (authAccessLevel === 'admin') {
     const tickets = req.body;
 
-    // Function to count characters excluding spaces
-    const countCharsWithoutSpaces = (str) => {
+    // Function to count characters excluding spaces.
+    const countChars = (str) => {
       return str.replace(/\s+/g, '').length;
     };
 
-    // Compute estimation for each ticket
+    // Compute estimation for each ticket.
     const estimations = tickets.map(ticket => {
-      const totalLength = countCharsWithoutSpaces(ticket.title) + countCharsWithoutSpaces(ticket.category);
+      const totalLength = countChars(ticket.title) + countChars(ticket.category);
       let result = (totalLength * 10) + (Math.floor(Math.random() * 240) + 1);
       return { id: ticket.id, estimation: result };
     });
 
-    // Return the estimations in the response
     res.json(estimations);
   }
 });

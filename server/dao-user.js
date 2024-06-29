@@ -4,13 +4,23 @@
 const sqlite = require('sqlite3');
 const crypto = require('crypto');
 
-// open the database
+/**
+ * Open the database.
+ */
 const db = new sqlite.Database('ticketing.db', (err) => {
   if (err) throw err;
 });
 
+/**
+ * Function to get the information of an user given its id.
+ * 
+ * @param id integer unique identifier of the user  
+ * @returns a promise that resolves to an object containing the user info {id: 1, username : "user", admin: 1} or an error message
+ */
+
 exports.getUserById = (id) => {
   return new Promise((resolve, reject) => {
+
     const sql = 'SELECT * FROM users WHERE id = ?';
     db.get(sql, [id], (err, row) => {
       if (err)
@@ -18,13 +28,20 @@ exports.getUserById = (id) => {
       else if (row === undefined)
         resolve({ error: 'User not found.' });
       else {
-        // by default, the local strategy looks for "username":
         const user = { id: row.id, username: row.username, admin: row.admin }
         resolve(user);
       }
     });
   });
 };
+
+/**
+ * Function to check if the username and password are correct.
+ * 
+ * @param username string containing the user username
+ * @param password string containing the user password
+ * @returns a promise that resolves to an object containing the user info {id: 1, username : "user", admin: 1} or an error message
+ */
 
 exports.getUser = (username, password) => {
   return new Promise((resolve, reject) => {
@@ -50,7 +67,13 @@ exports.getUser = (username, password) => {
   });
 };
 
-//get the id of an user given its username
+/**
+ * Function to get the ID of a user given its username.
+ * 
+ * @param username the username of the user
+ * @returns a promise that resolves to an object containing the user ID {id: 1} or an error message
+ */
+
 exports.getUsername = (username) => {
   return new Promise((resolve, reject) => {
     const sql = 'SELECT * FROM users WHERE username=?';

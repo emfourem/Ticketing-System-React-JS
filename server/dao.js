@@ -5,12 +5,21 @@ const sqlite = require('sqlite3');
 const dayjs = require('dayjs');
 const userDao = require('./dao-user');
 
-// open the database
+/**
+ * Open the database.
+ */
+
 const db = new sqlite.Database('ticketing.db', (err) => {
   if (err) throw err;
 });
 
-// get all tickets
+/**
+ * Function to get all the tickets.
+ * 
+ * @returns a promise that resolves to an object containing the tickets or an error message
+ * [{id: 1, title: "title", text: "text", state: "open", category: "payment", date: {...}, ownerId: 1, username: "user"}, ...]
+ */
+
 exports.listTickets = () => {
   return new Promise((resolve, reject) => {
     const sql = 'SELECT * FROM tickets';
@@ -37,8 +46,15 @@ exports.listTickets = () => {
   });
 }
 
-//get a specific ticket
-exports.retrieveTicket = (id) => {
+/**
+ * Function to get a ticket given its id.
+ * 
+ * @param id integer unique identifier of the ticket 
+ * @returns a promise that resolves to an object containing the ticket or an error message
+ * {id: 1, title: "title", text: "text", state: "open", category: "payment", date: {...}, ownerId: 1, username: "user"}
+ */
+
+exports.getTicket = (id) => {
   return new Promise((resolve, reject) => {
     const sql = 'SELECT * FROM tickets WHERE id = ?';
     db.get(sql, [id], async (err, row) => {
@@ -65,7 +81,14 @@ exports.retrieveTicket = (id) => {
   });
 };
 
-//get all the blocks related to a specific ticket
+/**
+ * Function to get all the blocks associated to a specific ticket identified by its id.
+ * 
+ * @param id integer unique identifier of the ticket 
+ * @returns a promise that resolves to an object containing the blocks or an error message
+ * [{id: 1, author: "user", date: {...}, text: "text" }, ...]
+ */
+
 exports.listBlocks = (id) => {
   return new Promise((resolve, reject) => {
     const sql = 'SELECT * FROM blocks WHERE ticketId=?';
@@ -78,7 +101,7 @@ exports.listBlocks = (id) => {
         {
           id: b.id,
           author: b.author,
-          date: b.date,
+          date: dayjs(b.date),
           text: b.text
         }));
       resolve(blocks);
@@ -86,32 +109,13 @@ exports.listBlocks = (id) => {
   });
 }
 
-exports.getTicket = (id) => {
-  return new Promise((resolve, reject) => {
-    const sql = 'SELECT * FROM tickets WHERE id=?';
-    db.get(sql, [id], (err, row) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      if (row == undefined) {
-        resolve({ error: 'Ticket not found.' });
-      } else {
-        const ticket =
-        {
-          id: row.id,
-          title: row.title,
-          text: row.text,
-          state: row.state,
-          category: row.category,
-          date: dayjs(row.date),
-          ownerId: row.ownerId,
-        };
-        resolve(ticket);
-      }
-    });
-  });
-};
+/**
+ * Function to create a ticket.
+ * 
+ * @param ticket an object containing the information of the new ticket  without the id
+ * {title: "title", text: "text", state: "open", category: "payment", date: {...}, ownerId: 1}
+ * @returns a promise that resolves to the ID of the created ticket or an error message
+ */
 
 exports.createTicket = (ticket) => {
   return new Promise((resolve, reject) => {
@@ -126,6 +130,14 @@ exports.createTicket = (ticket) => {
   });
 };
 
+/**
+ * Function to create a block.
+ * 
+ * @param ticket an object containing the information of the new block  without the id
+ * {text: "text", author: "user", date: {...}, ticketId: 2}
+ * @returns a promise that resolves to the ID of the created block or an error message
+ */
+
 exports.createBlock = (block) => {
   return new Promise((resolve, reject) => {
     const sql = 'INSERT INTO blocks(text, author, date, ticketId) VALUES(?, ?, ?, ?)';
@@ -138,6 +150,15 @@ exports.createBlock = (block) => {
     });
   });
 };
+
+/**
+ * Function to update a ticket.
+ * 
+ * @param ticket an object containing the id and the state or the category
+ * {id: 1, state: "open"} or {id: 1, state: "new feature"}
+ * @param flag boolean value; if true, the category is updated, otherwise the state
+ * @returns a promise that resolves to the number of changes or an error message
+ */
 
 exports.updateTicket = (ticket, flag) => {
   if (flag) {
