@@ -109,7 +109,7 @@ function TicketsTable(props) {
                             <th>Open</th>
                             <th>Change Category</th>
                             <th>Expand</th>
-                            <th>Needed time</th>
+                            <th>Estimation</th>
                         </>
                     ) : (
                         props.user? (

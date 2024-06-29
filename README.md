@@ -296,10 +296,22 @@
 
 ## Database Tables
 
+- Table `users` - (id), username, salt, password, admin
+- Table `tickets` - (id), title, text, category, state, date, <u>ownerId</u> 
+There is a foreign key, ownerId, that references the id in the users table.
+- Table `blocks` - (id), date, author, text, <u>ticketId</u>
+There is a foreign key, ticketId, that references the id in the tickets table.
+
 
 ## Main React Components
 
 
+
+
 ## Screenshots
-![Screenshot](./img/screenshot.png)
+
+![Screenshot](./img/ticketsList.png)
+![Screenshot](./img/singleTicket.png)
+![Screenshot](./img/createForm.png)
+
 ## Users Credentials

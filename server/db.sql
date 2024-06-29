@@ -2,27 +2,27 @@ BEGIN TRANSACTION;
 
 CREATE TABLE IF NOT EXISTS "users" (
 	"id"	INTEGER PRIMARY KEY AUTOINCREMENT,
-	"username"	VARCHAR(20),
-	"salt" TEXT,
-	"password" TEXT,
+	"username"	VARCHAR(20) NOT NULL,
+	"salt" TEXT NOT NULL,
+	"password" TEXT NOT NULL,
 	"admin"	INTEGER DEFAULT(0)
 );
 CREATE TABLE IF NOT EXISTS "tickets" (
 	"id"	INTEGER PRIMARY KEY AUTOINCREMENT,
-    "title" VARCHAR(100),
-	"text"	TEXT,
-	"category"	VARCHAR(20),
-	"state"	VARCHAR(10),
-	"date"	DATE,
-	"ownerId" INTEGER,
+    "title" VARCHAR(100) NOT NULL,
+	"text"	TEXT NOT NULL,
+	"category"	VARCHAR(20) NOT NULL,
+	"state"	VARCHAR(10) NOT NULL,
+	"date"	DATE NOT NULL,
+	"ownerId" INTEGER NOT NULL,
     FOREIGN KEY (ownerId) REFERENCES users("id")
 );
 CREATE TABLE IF NOT EXISTS "blocks" (
 	"id"	INTEGER PRIMARY KEY AUTOINCREMENT,
-	"date"	DATE,
-    "author" VARCHAR(20),
-	"text" TEXT,
-	"ticketId"	INTEGER,
+	"date"	DATE NOT NULL,
+    "author" VARCHAR(20) NOT NULL,
+	"text" TEXT NOT NULL,
+	"ticketId"	INTEGER NOT NULL,
     FOREIGN KEY (ticketId) REFERENCES tickets("id")
 );
 
