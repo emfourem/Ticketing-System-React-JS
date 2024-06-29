@@ -297,9 +297,9 @@
 ## Database Tables
 
 * Table `users` - (id), username, salt, password, admin
-* Table `tickets` - (id), title, text, category, state, date, <ins>ownerId</ins> 
+* Table `tickets` - (id), title, text, category, state, date, <ins>ownerId</ins><br>
 There is a foreign key, ownerId, that references the id in the users table.
-* Table `blocks` - (id), date, author, text, <ins>ticketId</ins>
+* Table `blocks` - (id), date, author, text, <ins>ticketId</ins><br>
 There is a foreign key, ticketId, that references the id in the tickets table.
 
 
