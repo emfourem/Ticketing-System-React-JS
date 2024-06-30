@@ -108,6 +108,57 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
+/**
+ * Function to sanitize tickets.
+ * 
+ * @param ticket an object containing a ticket 
+ * @returns an object containing the sanitized ticket
+ */
+
+function sanitizeTicket(ticket) {
+  return {
+    id: parseInt(ticket.id),
+    title: DOMPurify.sanitize(ticket.title, { ALLOWED_TAGS: [] }),
+    text: DOMPurify.sanitize(ticket.text, { ALLOWED_TAGS: ['b', 'i', 'br'] }),
+    state: DOMPurify.sanitize(ticket.state, { ALLOWED_TAGS: [] }),
+    category: DOMPurify.sanitize(ticket.category, { ALLOWED_TAGS: [] }),
+    date: DOMPurify.sanitize(ticket.date, { ALLOWED_TAGS: [] }),
+    ownerId: parseInt(ticket.ownerId),
+    username: DOMPurify.sanitize(ticket.username, { ALLOWED_TAGS: [] })
+  };
+}
+
+/**
+ * Function to sanitize blocks.
+ * 
+ * @param ticket an object containing a block 
+ * @returns an object containing the sanitized block
+ */
+
+function sanitizeBlock(block) {
+  return {
+    id: parseInt(block.id),
+    text: DOMPurify.sanitize(block.text, { ALLOWED_TAGS: ['b', 'i', 'br'] }),
+    date: DOMPurify.sanitize(block.date, { ALLOWED_TAGS: [] }),
+    author: DOMPurify.sanitize(block.author, { ALLOWED_TAGS: [] })
+  };
+}
+
+/**
+ * Function to sanitize user information.
+ * 
+ * @param user an object containing the user information
+ * @returns an object containing the sanitized object
+ */
+
+function sanitizeUser(user) {
+  return {
+    id: parseInt(user.id),
+    username: DOMPurify.sanitize(user.username, { ALLOWED_TAGS: [] }),
+    admin: parseInt(user.admin)
+  };
+}
+
 
 
 /*** APIs ***/
@@ -119,7 +170,7 @@ app.use(passport.session());
 
 app.get('/api/tickets', (req, res) => {
   dao.listTickets()
-    .then(tickets => res.json(tickets))
+    .then(tickets => res.json(tickets.map(sanitizeTicket)))
     .catch(() => res.status(500).end());
 });
 
@@ -138,7 +189,7 @@ app.get('/api/ticket/:id', isLoggedIn, [
   dao.getTicket(req.params.id)
     .then(ticket => {
       if (ticket !== null) {
-        res.json(ticket);
+        res.json(sanitizeTicket(ticket));
       } else {
         res.status(404).json({ error: 'Ticket not found' });
       }
@@ -159,7 +210,7 @@ app.get('/api/blocks/:id', isLoggedIn, [
     return res.status(422).json({ errors: errors.array() });
   }
   dao.listBlocks(req.params.id)
-    .then(blocks => res.json(blocks))
+    .then(blocks => res.json(blocks.map(sanitizeBlock)))
     .catch(() => res.status(500).end());
 });
 
@@ -172,14 +223,14 @@ app.post('/api/tickets', isLoggedIn, [
   check('ownerId').isInt().toInt(),
   check('title').isLength({ min: 1, max: 100 }),
   check('text').isLength({ min: 1 }),
-  check('state').isIn(['open', 'close']).trim().escape(),
-  check('category').isIn(['payment', 'maintenance', 'inquiry', 'new feature', 'administrative']),
+  check('state').isIn(['open', 'close']).trim(),
+  check('category').isIn(['payment', 'maintenance', 'inquiry', 'new feature', 'administrative']).trim(),
   check('date').custom((value) => {
     if (!moment(value, 'YYYY-MM-DD HH:mm', true).isValid()) {
       throw new Error('Invalid date format, should be YYYY-MM-DD HH:mm');
     }
     return true;
-  }).trim().escape()
+  }).trim()
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -191,19 +242,19 @@ app.post('/api/tickets', isLoggedIn, [
     res.status(404).json(resultUser);
   else {
     const ticket = {
-      title: DOMPurify.sanitize(req.body.title),
-      text: DOMPurify.sanitize(req.body.text),
-      state: req.body.state,
-      category: DOMPurify.sanitize(req.body.category),
-      date: req.body.date,
+      title: DOMPurify.sanitize(req.body.title, {ALLOWED_TAGS: []}),
+      text: DOMPurify.sanitize(req.body.text, {ALLOWED_TAGS: ['b', 'i', 'br']}),
+      state: DOMPurify.sanitize(req.body.state,{ALLOWED_TAGS: []}),
+      category: DOMPurify.sanitize(req.body.category, {ALLOWED_TAGS: []}),
+      date: DOMPurify.sanitize(req.body.date,{ALLOWED_TAGS: []}),
       ownerId: req.body.ownerId
     };
 
     try {
       const id = await dao.createTicket(ticket);
-      res.status(201).json(id);
+      res.status(201).json(parseInt(id));
     } catch (err) {
-      res.status(503).json({ error: `Database error during the creation of answer ${ticket.text} by ${resultUser.username}.` });
+      res.status(503).json({ error: `Database error during the creation of the new ticket` });
     }
   }
 });
@@ -222,7 +273,7 @@ app.post('/api/ticket/:id/addBlock', isLoggedIn, [
       throw new Error('Invalid date format, should be YYYY-MM-DD HH:mm');
     }
     return true;
-  }).trim().escape()
+  }).trim()
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -244,14 +295,14 @@ app.post('/api/ticket/:id/addBlock', isLoggedIn, [
     }
     const block = {
       text: DOMPurify.sanitize(req.body.text),
-      date: req.body.date,
+      date: blockDate,
       author: DOMPurify.sanitize(req.body.author),
       ticketId: req.params.id
     };
 
     try {
       const id = await dao.createBlock(block);
-      res.status(201).json(id);
+      res.status(201).json(parseInt(id));
     } catch (err) {
       res.status(503).json({ error: `Database error during the creation of the block.` });
     }
@@ -264,8 +315,9 @@ app.post('/api/ticket/:id/addBlock', isLoggedIn, [
 
 app.put('/api/ticket/:id', isLoggedIn, [
   check('id').isInt().toInt(),
-  check('state').optional().isIn(['open', 'close']).trim().escape(),
-  check('category').optional().isIn(['payment', 'maintenance', 'inquiry', 'new feature', 'administrative']).trim().escape(),
+  check('id').isInt().toInt(),
+  check('state').optional().isIn(['open', 'close']).trim(),
+  check('category').optional().isIn(['payment', 'maintenance', 'inquiry', 'new feature', 'administrative']).trim(),
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -273,7 +325,7 @@ app.put('/api/ticket/:id', isLoggedIn, [
   }
 
   const ticket = req.body;
-  if (parseInt(ticket.id) !== req.params.id) {
+  if (ticket.id !== req.params.id) {
     return res.status(422).json({ error: `Parameters are wrong.` });
   }
   if (ticket.state) {
@@ -312,7 +364,7 @@ app.post('/api/sessions', function (req, res, next) {
 
       // req.user contains the authenticated user, we send all the user info back
       // this is coming from userDao.getUser()
-      return res.json(req.user);
+      return res.json(sanitizeUser(req.user));
     });
   })(req, res, next);
 });
@@ -321,7 +373,7 @@ app.post('/api/sessions', function (req, res, next) {
 // check whether the user is logged in or not
 app.get('/api/sessions/current', (req, res) => {
   if (req.isAuthenticated()) {
-    res.status(200).json(req.user);
+    res.status(200).json(sanitizeUser(req.user));
   }
   else
     res.status(401).json({ error: 'Not authenticated' });;

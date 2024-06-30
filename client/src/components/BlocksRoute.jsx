@@ -78,6 +78,18 @@ function BlockForm(props) {
   const [errorMsg, setErrorMsg] = useState('');
 
   /**
+   * Function to check if an input has at least 1 character.
+   * 
+   * @param input input from the user 
+   * @returns true if the input has a length > 1, false otherwise
+   */
+
+  const isValid = (input) => {
+    const text = input.replace(/<br\s*\/?>/g, '');
+    return text.trim().length > 0;
+  };
+
+  /**
    * Function to handle the submit event of the form to create a new block.
    * 
    * @param event event to handle 
@@ -91,17 +103,20 @@ function BlockForm(props) {
 
     // Form validation.
 
-    if (blockText === '') {
+    if (blockText === '' || !isValid(blockText)) {
       setErrorMsg('Text cannot be empty! Please add some text.');
     } else {
 
       // Data sanitization and creation of the block.
 
       const block = {
+
+        // Replace all newline characters (\n) with <br> tags and reduce consecutive <br> tags into a single <br> tag while optionally removing trailing whitespace.
         text: DOMPurify.sanitize(blockText.replace(/\n/g, '<br>').replace(/(<br\s*\/?>\s*){2,}/g, '<br>'), {ALLOWED_TAGS: allowedTags}),
         date: dayjs(),
         author: DOMPurify.sanitize(props.username, {ALLOWED_TAGS: []}) 
       };
+      
       props.createBlock(block, parseInt(ticketId));
 
       // Empty the block text and the error message.

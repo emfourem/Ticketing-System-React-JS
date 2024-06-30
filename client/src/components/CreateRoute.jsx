@@ -70,6 +70,13 @@ function CreationForm(props) {
 
     const [estimation, setEstimation] = useState(null);
 
+    const isValid = (input) => {
+        
+        // Remove the <br> tags
+        const text = input.replace(/<br\s*\/?>/g, '');
+        return text.trim().length > 0;
+    };
+
     /**
      * Function to handle an error.
      * 
@@ -148,6 +155,8 @@ function CreationForm(props) {
         // All the data are sanitized.
 
         const ticket = {
+
+            // Replace all newline characters (\n) with <br> tags and reduce consecutive <br> tags into a single <br> tag while optionally removing trailing whitespace.
             text: DOMPurify.sanitize(text, { ALLOWED_TAGS: allowedTags }).replace(/\n/g, '<br>').replace(/(<br\s*\/?>\s*){2,}/g, '<br>'),
             title: DOMPurify.sanitize(title, { ALLOWED_TAGS: [] }),
             category: DOMPurify.sanitize(category, { ALLOWED_TAGS: [] }),
@@ -160,7 +169,7 @@ function CreationForm(props) {
 
         setErrorMsg('');
 
-        if(ticket.text.length > 0 && ticket.title.length > 0){
+        if(ticket.text.length > 0 && ticket.title.length > 0 && isValid(ticket.text) && isValid(ticket.title)){
             
             // The estimation computed is passed back.
 
