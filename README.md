@@ -344,6 +344,6 @@ There is a foreign key, ticketId, that references the id in the tickets table.
 
 ### Users
 
-* username: bob, password: bobWA
+* username: bob, password: bobWA1
 * username: carl, password: carlWA
 * username: dave, password: daveWA
