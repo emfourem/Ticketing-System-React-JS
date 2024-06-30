@@ -1,6 +1,7 @@
 /**
  * All the API calls
  */
+'use strict';
 
 import dayjs from "dayjs";
 

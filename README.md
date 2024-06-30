@@ -47,18 +47,16 @@
 * Response body: One object containing the required ticket
 
     ``` JSON
-    [ 
-        { 
-            "id": 2,
-            "title": "Payment required",
-            "text": "Where are my money?",
-            "state": "open",
-            "category": "payment",
-            "date": {...,'$d': 2024-06-19T21:00:00.000Z,...},
-            "ownerId": 1, 
-            "username": "alice" 
-        }
-    ]
+    { 
+        "id": 2,
+        "title": "Payment required",
+        "text": "Where are my money?",
+        "state": "open",
+        "category": "payment",
+        "date": {...,'$d': 2024-06-19T21:00:00.000Z,...},
+        "ownerId": 1, 
+        "username": "alice" 
+    }
     ```
 * Error responses: `500 Internal Server Error` (generic error), `404 Not Found` (ticket not found)
 
@@ -95,16 +93,14 @@
 * Authentication needed
 * Request body: Description of the object to add (id is not required)
     ``` JSON
-    [ 
-        { 
-            "title": "New ticket",
-            "text": "This is a new ticket.",
-            "state": "open",
-            "category": "administrative",
-            "date": {...,'$d': 2023-11-19T17:28:00.000Z,...},
-            "ownerId": 4
-        }
-    ]
+    { 
+        "title": "New ticket",
+        "text": "This is a new ticket.",
+        "state": "open",
+        "category": "administrative",
+        "date": {...,'$d': 2023-11-19T17:28:00.000Z,...},
+        "ownerId": 4
+    }
     ```
 
 * Response: `201 Created` (success)
@@ -117,14 +113,12 @@
 * Description: Create a new block related to the ticket specified by the id
 * Authentication needed
 * Request body: Description of the object to add (id is not required)
-    ``` JSON
-    [ 
-        { 
-            "text": "This is a new block.",
-            "date": {...,'$d': 2022-07-23T12:15:00.000Z,...},
-            "author": "carl"
-        }
-    ]
+    ``` JSON 
+    { 
+        "text": "This is a new block.",
+        "date": {...,'$d': 2022-07-23T12:15:00.000Z,...},
+        "author": "carl"
+    }
     ```
 * Response: `201 Created` (success)
 * Response body: The unique id assigned by the database to the new block.
@@ -136,24 +130,20 @@
 * Description: Update the state or the category of the ticket specified by the id
 * Authentication needed
 * Request body: Object containing the id and the state, or the category
-    ``` JSON
-    [ 
-        { 
-            "id": 1,
-            "state": "close"
-        }
-    ]
+    ``` JSON 
+    { 
+        "id": 1,
+        "state": "close"
+    }
     ```
 
     or
 
     ``` JSON
-    [ 
-        { 
-            "id": 1,
-            "category": "payment"
-        }
-    ]
+    { 
+        "id": 1,
+        "category": "payment"
+    }
     ```
 
 * Response: `201 Created` (success)
@@ -230,12 +220,10 @@
 * Response body: Object containing the token and the level of the user
 
     ``` JSON
-    [ 
-        { 
-            "token": "token",
-            "authLevel": "admin"
-        }
-    ]
+    { 
+        "token": "token",
+        "authLevel": "admin"
+    }
     ```
 * Error responses: `401 Unauthorized`
 
@@ -249,21 +237,17 @@
 * Request headers: JWT token with the authorization access level
 * Request body: The title and category of the ticket for which a closing time estimation is required
     ``` JSON
-    [ 
-        { 
-            "title": "Simple request",
-            "category": "maintenance"
-        }
-    ]
+    {
+        "title": "Simple request",
+        "category": "maintenance"
+    }
     ```
 * Response: `200 OK`
 * Response body: Object containing the estimation
     ``` JSON
-    [ 
-        { 
-            "estimation": 100
-        }
-    ]
+    { 
+        "estimation": 100
+    }
     ```
 * Error responses: `400 Unauthorized`, `401 Bad Request` (invalid request body)
 
@@ -280,7 +264,8 @@
             "id": 1,
             "title": "Simple request",
             "category": "maintenance"
-        }
+        },
+        ...
     ]
     ```
 * Response: `200 OK`
