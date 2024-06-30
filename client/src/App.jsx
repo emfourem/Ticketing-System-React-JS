@@ -1,7 +1,7 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
 import { useState, useEffect, useRef } from 'react';
-import { Col, Container, Row, Navbar, Button, Nav, Alert } from 'react-bootstrap';
+import { Col, Container, Row, Navbar, Button, Nav, Alert, Spinner } from 'react-bootstrap';
 import { BrowserRouter, Routes, Route, Outlet, Link, useNavigate, Navigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import { TicketsTable } from './components/TableComponents';
@@ -139,6 +139,8 @@ function DefaultRoute() {
 
 function App() {
 
+  const navigate = useNavigate();
+
   /** The list of tickets. */
 
   const [tickets, setTickets] = useState([]);
@@ -177,6 +179,10 @@ function App() {
    */
 
   const [flag, setFlag] = useState(true);
+
+  /** Loading state to manage spinner display */
+
+  const [loading, setLoading] = useState(true);
 
   /** 
    * It is a reference to the timer in charge of updating a token.
@@ -292,6 +298,7 @@ function App() {
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
+    navigate('/');
   }
 
   /**
@@ -340,8 +347,12 @@ function App() {
         API.getAllTickets()
           .then((list) => {
             setTickets(list.sort((a, b) => (a.date).isAfter(b.date) ? -1 : 1));
+            setLoading(false);
           })
-          .catch((err) => handleError(err));
+          .catch((err) => {
+            handleError(err);
+            setLoading(false);
+          });
       }
     };
     // Check if a session already exists and retrieve all tickets anyway.
@@ -372,17 +383,25 @@ function App() {
   }, [token, flag, tickets, user]) //all these dependencies are needed for executing the function in the correct moment
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path='/' element={<Layout user={user} logout={logout} />}>
-          <Route index element={<TicketsRoute ticketsList={tickets} toggleState={toggleState} user={user} errorMsg={errorMsg} setErrorMsg={setErrorMsg} changeCat={changeCategory} estimations={estimations} successMsg={successMsg} setSuccessMsg={setSuccessMsg} />} />
-          <Route path='/create' element={<CreateRoute createTicket={createTicket} user={user} token={token} />} />
-          <Route path='/ticket/:ticketId' element={<BlocksRoute user={user} />} />
-          <Route path='/login' element={user ? <Navigate replace to='/' /> : <LoginForm loginSuccessful={loginSuccessful} />} />
-        </Route>
-        <Route path='/*' element={<DefaultRoute />} />
-      </Routes>
-    </BrowserRouter>
+    <Routes>
+      <Route path='/' element={<Layout user={user} logout={logout} />}>
+        <Route index element={
+          loading ? (
+            <div className="d-flex justify-content-center align-items-center" style={{ height: '80vh' }}>
+              <Spinner animation="border" role="status">
+                <span className="visually-hidden">Loading data</span>
+              </Spinner>
+            </div>
+          ) : (
+            <TicketsRoute ticketsList={tickets} toggleState={toggleState} user={user} errorMsg={errorMsg} setErrorMsg={setErrorMsg} changeCat={changeCategory} estimations={estimations} successMsg={successMsg} setSuccessMsg={setSuccessMsg} />
+          )
+        } />
+        <Route path='/create' element={<CreateRoute createTicket={createTicket} user={user} token={token} />} />
+        <Route path='/ticket/:ticketId' element={<BlocksRoute user={user} />} />
+        <Route path='/login' element={user ? <Navigate replace to='/' /> : <LoginForm loginSuccessful={loginSuccessful} />} />
+      </Route>
+      <Route path='/*' element={<DefaultRoute />} />
+    </Routes>
   );
 }
 
