@@ -284,8 +284,9 @@ app.post('/api/ticket/:id/addBlock', isLoggedIn, [
   const resultTicket = await dao.getTicket(req.params.id); //db consistency: make sure ticket already exists
 
   if (resultUser.error && resultTicket.error)
-    res.status(404).json({ error: 'User or ticket not found.'});
+    return res.status(404).json({ error: 'User or ticket not found.'});
   else {
+    
     // Check: is the insertion date of the block after the insertion date of ticket?
     const ticketDate = dayjs(resultTicket.date, 'YYYY-MM-DD HH:mm');
     const blockDate = dayjs(req.body.date, 'YYYY-MM-DD HH:mm');
@@ -295,7 +296,7 @@ app.post('/api/ticket/:id/addBlock', isLoggedIn, [
     }
     const block = {
       text: DOMPurify.sanitize(req.body.text),
-      date: blockDate,
+      date: req.body.date,
       author: DOMPurify.sanitize(req.body.author),
       ticketId: req.params.id
     };

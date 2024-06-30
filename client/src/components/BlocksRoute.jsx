@@ -183,6 +183,10 @@ function BlocksRoute(props) {
 
   const [errorMsg, setErrorMsg] = useState('');
 
+  /** The success message to show in case of success. */
+
+  const [successMsg, setSuccessMsg] = useState('');
+
   /** The state of the specific ticket. */
 
   const [state, setState] = useState('');
@@ -258,6 +262,10 @@ function BlocksRoute(props) {
       .then((id) => {
         const newBlock = { ...block, id: id };
         setBlocksList(list => [...list, newBlock]);
+        setSuccessMsg('Block created!')
+        setTimeout(() => {
+          setSuccessMsg('');
+        }, 2000);
       })
       .catch((err) => handleError(err));
   }
@@ -283,6 +291,13 @@ function BlocksRoute(props) {
         <Row>
           <Col>
             <Alert variant='danger' dismissible onClose={() => setErrorMsg('')}>{errorMsg}</Alert>
+          </Col>
+        </Row>
+      )}
+      {successMsg && (
+        <Row>
+          <Col>
+            <Alert variant='success' dismissible onClose={() => setSuccessMsg('')}>{successMsg}</Alert>
           </Col>
         </Row>
       )}

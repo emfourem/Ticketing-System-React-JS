@@ -74,13 +74,15 @@ function MyFooter() {
 /**
  * Function to manage the creation of the table containing the tickets.
  * 
- * @param props.errorMsg string for message errors
+ * @param props.errorMsg error message string
  * @param props.setErrorMsg function to set an error message
  * @param props.ticketsList list of tickets
  * @param props.toggleState function to reverse the state of a ticket
  * @param props.user user information as object
  * @param props.changeCat function to change the category of a ticket
  * @param props.estimations list of objects containing estimations for each ticket
+ * @param props.successMsg success message string
+ * @param props.setSuccessMsg function to set a success message 
  * @returns JSX for the TicketRoute component
  */
 
@@ -91,6 +93,9 @@ function TicketsRoute(props) {
       {props.errorMsg ? <Row><Col><Alert className="m-2"
         variant="danger" dismissible onClose={() => props.setErrorMsg('')} >
         {props.errorMsg}</Alert></Col></Row> : null}
+      {props.successMsg ? <Row><Col><Alert className="m-2"
+        variant="success" dismissible onClose={() => props.setSuccessMsg('')} >
+        {props.successMsg}</Alert></Col></Row> : null}
       <div className="p-4">
         <Row>
         </Row>
@@ -141,6 +146,10 @@ function App() {
   /** The error message to show in case of errors. */
 
   const [errorMsg, setErrorMsg] = useState('');
+
+  /** The success message to show in case of success. */
+
+  const [successMsg, setSuccessMsg] = useState('');
 
   /** 
    * Contains information about logged in user.
@@ -201,7 +210,7 @@ function App() {
   /**
    * Function to reverse the state of a ticket.
    * 
-   * @param ticket object
+   * @param ticket object containing ticket info
    */
 
   function toggleState(ticket) {
@@ -213,6 +222,10 @@ function App() {
             t.id === ticket.id ? { ...t, state: newState } : t
           )
         );
+        setSuccessMsg('State changed!');
+        setTimeout(() => {
+          setSuccessMsg('');
+        }, 2000);
       })
       .catch(err => handleError(err));
   }
@@ -221,7 +234,7 @@ function App() {
    * Function to change category of a specific ticket.
    * If the change is done, a new estimation only for the ticket is requested.
    * 
-   * @param  ticket object
+   * @param  ticket object containing ticket info
    * @param  category string 
    */
 
@@ -232,7 +245,11 @@ function App() {
         setTickets(list);
         API.getEstimation(token, ticket.title, ticket.category)
           .then((res) => setEstimations(prevEstimations => ({ ...prevEstimations, [ticket.id]: res.estimation })))
-          .catch(err => handleError(err))
+          .catch(err => handleError(err));
+        setSuccessMsg('Category updated and new estimation computed!');
+        setTimeout(() => {
+          setSuccessMsg('');
+        }, 3000);
       })
       .catch(err => handleError(err));
   }
@@ -240,7 +257,7 @@ function App() {
   /**
    * Function to create a ticket.
    * 
-   * @param ticket object 
+   * @param ticket object containing the ticket info
    * @param estimation integer 
    */
 
@@ -253,6 +270,10 @@ function App() {
         if (user && user.admin) {
           setEstimations(prevEstimations => ({ ...prevEstimations, [id]: estimation }));
         }
+        setSuccessMsg('Ticket created!');
+        setTimeout(() => {
+          setSuccessMsg('');
+        }, 2000);
       })
       .catch((err) => handleError(err));
   }
@@ -298,7 +319,7 @@ function App() {
   /**
    * Function executed when login is performed succesfully.
    * 
-   * @param user object 
+   * @param user object containing user info
    */
 
   const loginSuccessful = (user) => {
@@ -315,7 +336,7 @@ function App() {
       } catch (err) {
         // Errors here mean that no session is already present, so login is needed.
       } finally {
-        
+
         API.getAllTickets()
           .then((list) => {
             setTickets(list.sort((a, b) => (a.date).isAfter(b.date) ? -1 : 1));
@@ -354,7 +375,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path='/' element={<Layout user={user} logout={logout} />}>
-          <Route index element={<TicketsRoute ticketsList={tickets} toggleState={toggleState} user={user} errorMsg={errorMsg} setErrorMsg={setErrorMsg} changeCat={changeCategory} estimations={estimations} />} />
+          <Route index element={<TicketsRoute ticketsList={tickets} toggleState={toggleState} user={user} errorMsg={errorMsg} setErrorMsg={setErrorMsg} changeCat={changeCategory} estimations={estimations} successMsg={successMsg} setSuccessMsg={setSuccessMsg} />} />
           <Route path='/create' element={<CreateRoute createTicket={createTicket} user={user} token={token} />} />
           <Route path='/ticket/:ticketId' element={<BlocksRoute user={user} />} />
           <Route path='/login' element={user ? <Navigate replace to='/' /> : <LoginForm loginSuccessful={loginSuccessful} />} />
