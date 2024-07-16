@@ -1,5 +1,5 @@
 # Exam #1: "Ticketing system"
-## Student: s332058 MERICO MICHELE
+## Student: MERICO MICHELE
 
 ## React Client Application Routes
 

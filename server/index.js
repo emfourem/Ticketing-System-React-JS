@@ -59,7 +59,7 @@ passport.use(new LocalStrategy(
     password = validator.trim(password);
 
     // Validate inputs
-    if (!validator.isLength(username, { min: 3, max: 30 }) || !validator.isLength(password, { min: 6 }) ) {
+    if (!validator.isLength(username, { min: 3, max: 30 }) || !validator.isLength(password, { min: 6 })) {
       return done(null, false, { message: 'Incorrect username or password.' });
     }
 
@@ -99,7 +99,7 @@ const isLoggedIn = (req, res, next) => {
 
 // set up the session
 app.use(session({
-  secret: 'aqpo9182uehdb27191203sna', 
+  secret: 'aqpo9182uehdb27191203sna',
   resave: false,
   saveUninitialized: false
 }));
@@ -242,11 +242,11 @@ app.post('/api/tickets', isLoggedIn, [
     res.status(404).json(resultUser);
   else {
     const ticket = {
-      title: DOMPurify.sanitize(req.body.title, {ALLOWED_TAGS: []}),
-      text: DOMPurify.sanitize(req.body.text, {ALLOWED_TAGS: ['b', 'i', 'br']}),
-      state: DOMPurify.sanitize(req.body.state,{ALLOWED_TAGS: []}),
-      category: DOMPurify.sanitize(req.body.category, {ALLOWED_TAGS: []}),
-      date: DOMPurify.sanitize(req.body.date,{ALLOWED_TAGS: []}),
+      title: DOMPurify.sanitize(req.body.title, { ALLOWED_TAGS: [] }),
+      text: DOMPurify.sanitize(req.body.text, { ALLOWED_TAGS: ['b', 'i', 'br'] }),
+      state: DOMPurify.sanitize(req.body.state, { ALLOWED_TAGS: [] }),
+      category: DOMPurify.sanitize(req.body.category, { ALLOWED_TAGS: [] }),
+      date: DOMPurify.sanitize(req.body.date, { ALLOWED_TAGS: [] }),
       ownerId: req.body.ownerId
     };
 
@@ -284,9 +284,9 @@ app.post('/api/ticket/:id/addBlock', isLoggedIn, [
   const resultTicket = await dao.getTicket(req.params.id); //db consistency: make sure ticket already exists
 
   if (resultUser.error && resultTicket.error)
-    return res.status(404).json({ error: 'User or ticket not found.'});
+    return res.status(404).json({ error: 'User or ticket not found.' });
   else {
-    
+
     // Check: is the insertion date of the block after the insertion date of ticket?
     const ticketDate = dayjs(resultTicket.date, 'YYYY-MM-DD HH:mm');
     const blockDate = dayjs(req.body.date, 'YYYY-MM-DD HH:mm');
@@ -336,13 +336,15 @@ app.put('/api/ticket/:id', isLoggedIn, [
     } catch (err) {
       res.status(503).json({ error: `Database error during the update of the state of the ticket.` });
     }
+  } else if (ticket.category) {
+      try {
+        await dao.updateTicket(ticket, true);
+        res.status(200).end();
+      } catch (err) {
+        res.status(503).json({ error: `Database error during the update of the category of the ticket.` });
+      }
   } else {
-    try {
-      await dao.updateTicket(ticket, true);
-      res.status(200).end();
-    } catch (err) {
-      res.status(503).json({ error: `Database error during the update of the category of the ticket.` });
-    }
+    res.status(422).json({ error: ` Wrong request.` });
   }
 });
 

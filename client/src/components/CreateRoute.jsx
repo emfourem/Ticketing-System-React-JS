@@ -24,11 +24,20 @@ const allowedTags = ['b', 'i', 'br'];
 
 function CreateRoute(props) {
     return (
-        <Row className="justify-content-center mt-5">
-            <Col md={8}>
-                <CreationForm createTicket={props.createTicket} id={props.user && props.user.id} admin={props.user && props.user.admin} token={props.token} />
-            </Col>
-        </Row>
+        <>
+            {props.user ? (
+                <Row className="justify-content-center mt-5">
+                    <Col md={8}>
+                        <CreationForm 
+                            createTicket={props.createTicket} 
+                            id={props.user.id} 
+                            admin={props.user.admin} 
+                            token={props.token} 
+                        />
+                    </Col>
+                </Row>
+            ) : null}
+        </>
     );
 }
 
@@ -71,7 +80,7 @@ function CreationForm(props) {
     const [estimation, setEstimation] = useState(null);
 
     const isValid = (input) => {
-        
+
         // Remove the <br> tags
         const text = input.replace(/<br\s*\/?>/g, '');
         return text.trim().length > 0;
@@ -86,16 +95,16 @@ function CreationForm(props) {
     function handleError(err) {
         let errMsg = 'Unknown error';
         if (err.errors) {
-          if (err.errors[0].msg) {
-            errMsg = err.errors[0].msg;
-          }
+            if (err.errors[0].msg) {
+                errMsg = err.errors[0].msg;
+            }
         } else {
-          if (err.error) {
-            errMsg = err.error;
-          }
+            if (err.error) {
+                errMsg = err.error;
+            }
         }
         setErrorMsg(errMsg);
-      }
+    }
 
     useEffect(() => {
         if (isReviewMode && props.token) {
@@ -120,7 +129,7 @@ function CreationForm(props) {
         // To prevent reloading.
 
         event.preventDefault();
-        
+
         // Check if the input values are correct.
 
         if (text === '')
@@ -169,18 +178,18 @@ function CreationForm(props) {
 
         setErrorMsg('');
 
-        if(ticket.text.length > 0 && ticket.title.length > 0 && isValid(ticket.text) && isValid(ticket.title)){
-            
+        if (ticket.text.length > 0 && ticket.title.length > 0 && isValid(ticket.text) && isValid(ticket.title)) {
+
             // The estimation computed is passed back.
 
             props.createTicket(ticket, estimation);
             navigate('/');
 
-        }else{
-            
+        } else {
+
             setIsReviewMode(false);
             setErrorMsg('Text and title cannot be empty.');
-            
+
         }
     }
 
